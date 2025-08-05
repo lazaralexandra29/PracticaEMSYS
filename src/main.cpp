@@ -11,6 +11,6 @@ int main(void)
 	while(1)
 	{
 		PORTB ^=(1<<PORTB5);
-		_delay_ms(500);
+		_delay_ms(600);
 	}
 }
