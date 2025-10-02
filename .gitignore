@@ -1,2 +1,8 @@
 .pio
 .vscode
+# Microchip Studio
+Intreruperi/ex1/.vs/
+Intreruperi/ex1/Debug/
+Intreruperi/ex1/*.atsln
+Intreruperi/ex1/*.cproj
+Intreruperi/ex1/*.xml
