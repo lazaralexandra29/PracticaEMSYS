@@ -7,9 +7,6 @@
 #define LED0_PIN PD4
 #define LED1_PIN PD5
 
-#define LED0_PORT PORTD
-#define LED1_PORT PORTD
-
 void pinToggle(volatile uint8_t *port, uint8_t pin){
 	*port ^=  1 << pin;
 }
