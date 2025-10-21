@@ -1,16 +1,19 @@
-#define F_CPU16000000UL
-
 #include <avr/io.h>
-#include <avr/delay.h>
 
-int main(void)
-{
-	DDRB=0xFF;
-	PORTB=0x00;
-	
-	while(1)
-	{
-		PORTB ^=(1<<PORTB5);
-		_delay_ms(600);
-	}
+#include <drivers/gpio_driver.h>
+#include <drivers/timer_driver.h>
+#include <drivers/interrupts_driver.h>
+#include <drivers/usart_driver.h>
+#include <app/pedestrian_crossing.h>
+#include <app/traffic_light.h>
+#include <config/main_defines.h>
+
+GpioDriver myGpio;
+
+int main(void){
+
+    while (1) 
+    {
+
+    }
 }
