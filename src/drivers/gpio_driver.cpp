@@ -29,3 +29,9 @@ int8_t GpioDriver::ReadPinValue(volatile uint8_t *port, uint8_t pin, PinVal &val
     value = ((*port & (1 << pin)) ? PinVal::HIGH : PinVal::LOW);
     return 0;
 }
+
+int8_t GpioDriver::PinToggle(volatile uint8_t *port, uint8_t pin) {
+    if (pin > 7) return -1;
+    *port ^= (1 << pin);
+    return 0;
+}

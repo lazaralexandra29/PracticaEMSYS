@@ -18,6 +18,7 @@ class GpioDriver {
     int8_t SetPinDirection (volatile uint8_t *port, uint8_t pin, PinDir dir);
     int8_t SetPinValue (volatile uint8_t *port, uint8_t pin, PinVal value);
     int8_t ReadPinValue (volatile uint8_t *port, uint8_t pin, PinVal &value);
+    int8_t PinToggle (volatile uint8_t *port, uint8_t pin);
 };
 
 #endif
