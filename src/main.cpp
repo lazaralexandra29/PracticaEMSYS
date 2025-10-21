@@ -9,6 +9,9 @@
 #include <config/main_defines.h>
 
 GpioDriver myGpio;
+InterruptsDriver myInterrupts;
+
+
 
 int main(void){
 
