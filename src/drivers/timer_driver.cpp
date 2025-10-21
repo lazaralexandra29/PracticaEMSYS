@@ -9,9 +9,18 @@ static uint8_t GetPrescalerBits(uint8_t timer_id, Prescaler prescaler) {
 
         case Prescaler::DIV_8: return 2;
 
+        case Prescaler::DIV_32:
+         if(timer_id == 2) return 3;
+        return 0;
+        break;
+
         case Prescaler::DIV_64:
          if(timer_id == 2) return 4;
         return 3;
+
+        case Prescaler::DIV_128:
+         if(timer_id == 2) return 5;
+        return 0;
 
         case Prescaler::DIV_256:
          if(timer_id == 2) return 6;

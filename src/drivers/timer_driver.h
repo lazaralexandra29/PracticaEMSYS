@@ -12,9 +12,11 @@ enum class Prescaler : uint8_t {
     DIV_0 = 0,
     DIV_1 = 1,
     DIV_8 = 2,
-    DIV_64 = 3,
-    DIV_256 = 4,
-    DIV_1024 = 5
+    DIV_32 = 3,
+    DIV_64 = 4,
+    DIV_128 = 5,
+    DIV_256 = 6,
+    DIV_1024 = 7
 };
 
 class TimerDriver{
