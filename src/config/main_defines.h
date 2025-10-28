@@ -3,8 +3,6 @@
 
 #include <avr/io.h>
 
-#define F_CPU 16000000UL
-
 #define GPIO_PORTB_DDR &DDRB
 #define GPIO_PORTB_PORT &PORTB
 #define GPIO_PINB_PIN &PINB

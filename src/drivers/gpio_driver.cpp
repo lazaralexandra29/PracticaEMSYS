@@ -1,37 +1,95 @@
-#include <drivers/gpio_driver.h>
+#include <drivers/gpio_driver.hpp>
 
-int8_t GpioDriver::SetPinDirection(volatile uint8_t *port, uint8_t pin, PinDir dir){
-    if (pin > 7) return -1;
-    if (dir == PinDir::OUT){
-        *port |= (1 << pin);
-    } else if (dir == PinDir::IN){
-        *port &= ~(1 << pin);
-    } else{
-        return -2;
+#define MAX_NR_OF_PINS_PER_PORT 7
+
+GpioStatus GpioDriver::SetPinDirection(const PinDescription& pinDesc, PinDirection direction)
+{
+    uint8_t pin = pinDesc.GetPin();
+    volatile uint8_t* port = pinDesc.GetPort();
+
+    if(pin > MAX_NR_OF_PINS_PER_PORT)
+    {
+        return GpioStatus(GpioErrorCode::PIN_INDEX_OUT_OF_RANGE);
     }
-    return 0;
-}
 
-int8_t GpioDriver::SetPinValue(volatile uint8_t *port, uint8_t pin, PinVal value){
-    if (pin > 7) return -1;
-    if (value == PinVal::HIGH){
+    if (direction == PinDirection::OUT)
+    {
         *port |= (1 << pin);
-    } else if (value == PinVal::LOW){
-        *port &= ~(1 << pin);
-    } else {
-        return -2;
     }
-    return 0;
+    else if (direction == PinDirection::IN)
+    {
+        *port &= ~(1 << pin);
+    }
+
+    else
+    {
+        return GpioStatus(GpioErrorCode::INVALID_PIN_DIRECTION);
+    }
+
+    return GpioStatus(GpioErrorCode::SUCCESS);
 }
 
-int8_t GpioDriver::ReadPinValue(volatile uint8_t *port, uint8_t pin, PinVal &value){
-    if (pin > 7) return -1;
-    value = ((*port & (1 << pin)) ? PinVal::HIGH : PinVal::LOW);
-    return 0;
+GpioStatus GpioDriver::SetPinValue (const PinDescription& pinDesc, PinValue value)
+{
+    uint8_t pin = pinDesc.GetPin();
+    volatile uint8_t* port = pinDesc.GetPort();
+
+    if (pin > MAX_NR_OF_PINS_PER_PORT)
+    {
+        return GpioStatus(GpioErrorCode::PIN_INDEX_OUT_OF_RANGE);
+    }
+
+    if (value == PinValue::HIGH)
+    {
+        *port |= (1 << pin);
+    }
+    else if (value == PinValue::LOW)
+    {
+        *port &= ~(1 << pin);
+    }
+    else
+    {
+        return GpioStatus(GpioErrorCode::INVALID_PIN_VALUE);
+    }
+   
+    return GpioStatus(GpioErrorCode::SUCCESS);
 }
 
-int8_t GpioDriver::PinToggle(volatile uint8_t *port, uint8_t pin) {
-    if (pin > 7) return -1;
+GpioStatus GpioDriver::ReadPinValue (const PinDescription& pinDesc)
+{
+    uint8_t pin = pinDesc.GetPin();
+    volatile uint8_t* port = pinDesc.GetPort();
+
+    if (pin > MAX_NR_OF_PINS_PER_PORT)
+    {
+        return GpioStatus(GpioErrorCode::PIN_INDEX_OUT_OF_RANGE, PinValue::LOW);
+    }
+
+    PinValue value;
+
+    if (*port & (1 << pin))
+    {
+        value = PinValue::HIGH;
+    }
+    else
+    {
+        value = PinValue::LOW;
+    }
+
+    return GpioStatus(GpioErrorCode::SUCCESS, value);
+}
+
+GpioStatus GpioDriver::PinToggle (const PinDescription& pinDesc)
+{
+    uint8_t pin = pinDesc.GetPin();
+    volatile uint8_t* port = pinDesc.GetPort();
+
+    if (pin > MAX_NR_OF_PINS_PER_PORT)
+    {
+        return GpioStatus(GpioErrorCode::PIN_INDEX_OUT_OF_RANGE);
+    }
+
     *port ^= (1 << pin);
-    return 0;
+
+    return GpioStatus(GpioErrorCode::SUCCESS);
 }

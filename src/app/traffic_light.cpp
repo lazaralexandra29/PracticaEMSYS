@@ -14,3 +14,31 @@ void TrafficLight_CarInit() {
     myGpio.SetPinValue(GPIO_PORTB_PORT, LED_CAR_YELLOW_PIN, PinVal::LOW);
     myGpio.SetPinValue(GPIO_PORTB_PORT, LED_CAR_GREEN_PIN, PinVal::LOW);
 }
+
+void TrafficLight_SetCarState(TrafficLightState state) {
+    switch (state) {
+        case TL_STATE_GREEN:
+            myGpio.SetPinValue(GPIO_PORTB_PORT, LED_CAR_GREEN_PIN, PinVal::HIGH);
+            myGpio.SetPinValue(GPIO_PORTB_PORT, LED_CAR_RED_PIN, PinVal::LOW);
+            myGpio.SetPinValue(GPIO_PORTB_PORT, LED_CAR_YELLOW_PIN, PinVal::LOW);
+            break;
+
+        case TL_STATE_YELLOW:
+            myGpio.SetPinValue(GPIO_PORTB_PORT, LED_CAR_YELLOW_PIN, PinVal::HIGH);
+            myGpio.SetPinValue(GPIO_PORTB_PORT, LED_CAR_RED_PIN, PinVal::LOW);
+            myGpio.SetPinValue(GPIO_PORTB_PORT, LED_CAR_GREEN_PIN, PinVal::LOW);
+            break;
+
+        case TL_STATE_RED:
+            myGpio.SetPinValue(GPIO_PORTB_PORT, LED_CAR_RED_PIN, PinVal::HIGH);
+            myGpio.SetPinValue(GPIO_PORTB_PORT, LED_CAR_YELLOW_PIN, PinVal::LOW);
+            myGpio.SetPinValue(GPIO_PORTB_PORT, LED_CAR_GREEN_PIN, PinVal::LOW);
+            break;
+
+        default:
+            myGpio.SetPinValue(GPIO_PORTB_PORT, LED_CAR_RED_PIN, PinVal::LOW);
+            myGpio.SetPinValue(GPIO_PORTB_PORT, LED_CAR_YELLOW_PIN, PinVal::LOW);
+            myGpio.SetPinValue(GPIO_PORTB_PORT, LED_CAR_GREEN_PIN, PinVal::LOW);
+            break;
+    }
+}
