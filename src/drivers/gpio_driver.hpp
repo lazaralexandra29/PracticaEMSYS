@@ -27,20 +27,12 @@ enum class GpioErrorCode : int8_t
 class GpioStatus
 {
     public:
-     GpioStatus(GpioErrorCode errorCode = GpioErrorCode::SUCCESS) 
-        : m_errorCode(errorCode), m_pinValue(PinValue::LOW) {}
-
-     GpioStatus(GpioErrorCode errorCode, PinValue pinValue) 
-        : m_errorCode(errorCode), m_pinValue(pinValue) {}
+      GpioStatus(GpioErrorCode errorCode = GpioErrorCode::SUCCESS) 
+        : m_errorCode(errorCode) {}
     
         GpioErrorCode GetErrorCode() const 
         { 
             return m_errorCode; 
-        }
-
-        PinValue GetPinValue() const 
-        { 
-            return m_pinValue; 
         }
 
         bool IsSuccess() const 
@@ -49,14 +41,13 @@ class GpioStatus
         }
 
     private:
-     const GpioErrorCode m_errorCode;
-     const PinValue m_pinValue; 
+      const GpioErrorCode m_errorCode;
 };
 
 class PinDescription
 {
     public:
-     PinDescription(volatile uint8_t *port, uint8_t pin) 
+      PinDescription(volatile uint8_t *port, const uint8_t pin) 
         : m_port(port), m_pin(pin)
         {}
         
@@ -82,9 +73,9 @@ class GpioDriver
 
         GpioStatus SetPinValue (const PinDescription& pinDesc, PinValue value);
 
-        GpioStatus ReadPinValue (const PinDescription& pinDesc);
+        GpioStatus ReadPinValue (const PinDescription& pinDesc,  PinValue& outValue);
         
-        GpioStatus PinToggle (const PinDescription& pinDesc);
+        GpioStatus PinToggle (const PinDescription& pinDesc); //ne trebuie si valoarea de pe pin aici?
 };
 
 #endif

@@ -1,111 +1,262 @@
-#include <drivers/timer_driver.h>
+#include <drivers/timer_driver.hpp>
 #include <avr/io.h>
 
-static uint8_t GetPrescalerBits(uint8_t timer_id, Prescaler prescaler) {
-    switch (prescaler) {
-        case Prescaler::DIV_0: return 0;
-    
-        case Prescaler::DIV_1: return 1;
+#define MAX_NR_OF_TIMERS 3
 
-        case Prescaler::DIV_8: return 2;
+TimerStatus TimerDriver::Init(const TimerConfiguration& desc)
+{
+    uint8_t timer_id = desc.GetTimerId();
+    TimerMode mode = desc.GetMode();
+    Prescaler prescaler = desc.GetPrescaler();
 
-        case Prescaler::DIV_32:
-         if(timer_id == 2) return 3;
-        return 0;
-        break;
-
-        case Prescaler::DIV_64:
-         if(timer_id == 2) return 4;
-        return 3;
-
-        case Prescaler::DIV_128:
-         if(timer_id == 2) return 5;
-        return 0;
-
-        case Prescaler::DIV_256:
-         if(timer_id == 2) return 6;
-        return 4;
-
-        case Prescaler::DIV_1024:
-         if(timer_id == 2) return 7;
-        return 5;
-
-        default:
-         return 0;
+    if (timer_id >= MAX_NR_OF_TIMERS)
+    {
+        return TimerStatus(TimerErrorCode::INVALID_TIMER_ID);
     }
 
+    if (timer_id == 0)
+    {
+        if (mode == TimerMode::NORMAL)
+        {
+            TCCR0A &= ~((1 << WGM01) | (1 << WGM00));
+        }
+        else if (mode == TimerMode::CTC)
+        {
+            TCCR0A |= (1 << WGM01);
+            TCCR0A &= ~(1 << WGM00);
+        }
+        else
+        {
+            return TimerStatus(TimerErrorCode::INVALID_TIMER_MODE);
+        }
+    }
+    else if (timer_id == 1)
+    {
+        if (mode == TimerMode::NORMAL)
+        {
+            TCCR1B &= ~(1 << WGM12);
+        }
+        else if (mode == TimerMode::CTC)
+        {
+            TCCR1B |= (1 << WGM12);
+        }
+        else
+        {
+            return TimerStatus(TimerErrorCode::INVALID_TIMER_MODE);
+        }
+    }
+    else if (timer_id == 2)
+    {
+        if (mode == TimerMode::NORMAL)
+        {
+            TCCR2A &= ~((1 << WGM21) | (1 << WGM20));
+        }
+        else if (mode == TimerMode::CTC)
+        {
+            TCCR2A |= (1 << WGM21);
+            TCCR2A &= ~(1 << WGM20);
+        }
+        else
+        {
+            return TimerStatus(TimerErrorCode::INVALID_TIMER_MODE);
+        }
+    }
+
+    uint8_t prescalerBits = 0;
+
+    if (timer_id == 0)
+    {
+        if (prescaler == Prescaler::DIV_1)
+        {
+            prescalerBits = (1 << CS00);
+        }
+        else if (prescaler == Prescaler::DIV_8)
+        {
+            prescalerBits = (1 << CS01);
+        }
+        else if (prescaler == Prescaler::DIV_64)
+        {
+            prescalerBits = (1 << CS01) | (1 << CS00);
+        }
+        else if (prescaler == Prescaler::DIV_256)
+        {
+            prescalerBits = (1 << CS02);
+        }
+        else if (prescaler == Prescaler::DIV_1024)
+        {
+            prescalerBits = (1 << CS02) | (1 << CS00);
+        }
+        else
+        {
+            return TimerStatus(TimerErrorCode::INVALID_PRESCALER);
+        }
+
+        TCCR0B = prescalerBits;
+    }
+    else if (timer_id == 1)
+    {
+        if (prescaler == Prescaler::DIV_1)
+        {
+            prescalerBits = (1 << CS10);
+        }
+        else if (prescaler == Prescaler::DIV_8)
+        {
+            prescalerBits = (1 << CS11);
+        }
+        else if (prescaler == Prescaler::DIV_64)
+        {
+            prescalerBits = (1 << CS11) | (1 << CS10);
+        }
+        else if (prescaler == Prescaler::DIV_256)
+        {
+            prescalerBits = (1 << CS12);
+        }
+        else if (prescaler == Prescaler::DIV_1024)
+        {
+            prescalerBits = (1 << CS12) | (1 << CS10);
+        }
+        else
+        {
+            return TimerStatus(TimerErrorCode::INVALID_PRESCALER);
+        }
+
+        TCCR1B = (TCCR1B & 0xF8) | prescalerBits;
+    }
+    else if (timer_id == 2)
+    {
+        if (prescaler == Prescaler::DIV_1)
+        {
+            prescalerBits = (1 << CS20);
+        }
+        else if (prescaler == Prescaler::DIV_8)
+        {
+            prescalerBits = (1 << CS21);
+        }
+        else if (prescaler == Prescaler::DIV_32)
+        {
+            prescalerBits = (1 << CS21) | (1 << CS20);
+        }
+        else if (prescaler == Prescaler::DIV_64)
+        {
+            prescalerBits = (1 << CS22);
+        }
+        else if (prescaler == Prescaler::DIV_128)
+        {
+            prescalerBits = (1 << CS22) | (1 << CS20);
+        }
+        else if (prescaler == Prescaler::DIV_256)
+        {
+            prescalerBits = (1 << CS22) | (1 << CS21);
+        }
+        else if (prescaler == Prescaler::DIV_1024)
+        {
+            prescalerBits = (1 << CS22) | (1 << CS21) | (1 << CS20);
+        }
+        else
+        {
+            return TimerStatus(TimerErrorCode::INVALID_PRESCALER);
+        }
+
+        TCCR2B = prescalerBits;
+    }
+
+    return TimerStatus(TimerErrorCode::SUCCESS);
 }
 
-int8_t TimerDriver :: Init(uint8_t timer_id, TimerMode mode, Prescaler prescaler) {
-    uint8_t cs_bits = GetPrescalerBits(timer_id, prescaler);
-
-    switch (timer_id) {
-        case 0:
-         TCCR0A = (mode == TimerMode::CTC) ? (1 << WGM01) : 0;
-         TCCR0B = cs_bits;
-         TCNT0 = 0;
-        break;
-
-        case 1:
-         TCCR1A = 0;
-         TCCR1B = (mode == TimerMode::CTC) ? (1 << WGM12) : 0;
-         TCCR1B |= cs_bits;
-         TCNT1 = 0;
-        break;
-
-        case 2:
-         TCCR2A = (mode == TimerMode::CTC) ? (1 << WGM21) : 0;
-         TCCR2B = cs_bits;
-         TCNT2 = 0;
-        break;
-
-        default:
-         return -1;
+TimerStatus TimerDriver::SetCompareValue(uint8_t timer_id, uint16_t value)
+{
+    if (timer_id >= MAX_NR_OF_TIMERS)
+    {
+        return TimerStatus(TimerErrorCode::INVALID_TIMER_ID);
     }
-    return 0;
+
+    if (timer_id == 0)
+    {
+        OCR0A = static_cast<uint8_t>(value);
+    }
+    else if (timer_id == 1)
+    {
+        OCR1A = value;
+    }
+    else if (timer_id == 2)
+    {
+        OCR2A = static_cast<uint8_t>(value);
+    }
+    else
+    {
+        return TimerStatus(TimerErrorCode::INVALID_COMPARE_VALUE);
+    }
+
+    return TimerStatus(TimerErrorCode::SUCCESS);
 }
 
-int8_t TimerDriver::SetCompareValue(uint8_t timer_id, uint16_t value) {
-    if( (timer_id ==0 || timer_id == 2) && value > 255) return -2;
-
-    switch (timer_id) {
-        case 0:
-         OCR0A = static_cast<uint8_t>(value);
-        break;
-
-        case 1:
-         OCR1A = value;
-        break;
-
-        case 2:
-         OCR2A = static_cast<uint8_t>(value);
-        break;
-
-        default:
-         return -1;
+TimerStatus TimerDriver::CheckElapsed(uint8_t timer_id, bool& elapsed)
+{
+    if (timer_id >= MAX_NR_OF_TIMERS)
+    {
+        return TimerStatus(TimerErrorCode::INVALID_TIMER_ID);
     }
-    return 0;
+
+    if (timer_id == 0)
+    {
+        elapsed = (TIFR0 & (1 << OCF0A));
+        TIFR0 |= (1 << OCF0A); 
+    }
+    else if (timer_id == 1)
+    {
+        elapsed = (TIFR1 & (1 << OCF1A));
+        TIFR1 |= (1 << OCF1A);
+    }
+    else if (timer_id == 2)
+    {
+        elapsed = (TIFR2 & (1 << OCF2A));
+        TIFR2 |= (1 << OCF2A);
+    }
+
+    return TimerStatus(TimerErrorCode::SUCCESS);
 }
 
-bool TimerDriver::HasElapsed(uint8_t timer_id) {
-    bool elapsed = false;
-
-    switch (timer_id) {
-        case 0: 
-         elapsed = (TIFR0 & (1 << OCF0A));
-         if(elapsed) TIFR0 = (1 << OCF0A);
-        break;
-
-        case 1: 
-         elapsed = (TIFR1 & (1 << OCF1A));
-         if(elapsed) TIFR1 = (1 << OCF1A);
-        break;
-
-        case 2: 
-         elapsed = (TIFR2 & (1 << OCF2A));
-         if(elapsed) TIFR2 = (1 << OCF2A);
-        break;
+TimerStatus TimerDriver::Stop(uint8_t timer_id)
+{
+    if (timer_id >= MAX_NR_OF_TIMERS)
+    {
+        return TimerStatus(TimerErrorCode::INVALID_TIMER_ID);
     }
 
-    return elapsed;
+    if (timer_id == 0)
+    {
+        TCCR0B &= ~((1 << CS02) | (1 << CS01) | (1 << CS00));
+    }
+    else if (timer_id == 1)
+    {
+        TCCR1B &= ~((1 << CS12) | (1 << CS11) | (1 << CS10));
+    }
+    else if (timer_id == 2)
+    {
+        TCCR2B &= ~((1 << CS22) | (1 << CS21) | (1 << CS20));
+    }
+
+    return TimerStatus(TimerErrorCode::SUCCESS);
+}
+
+TimerStatus TimerDriver::Reset(uint8_t timer_id)
+{
+    if (timer_id >= MAX_NR_OF_TIMERS)
+    {
+        return TimerStatus(TimerErrorCode::INVALID_TIMER_ID);
+    }
+    if (timer_id == 0)
+    {
+        TCNT0 = 0;
+    }
+    else if (timer_id == 1)
+    {
+        TCNT1 = 0;
+    }
+    else if (timer_id == 2)
+    {
+        TCNT2 = 0;
+    }
+
+    return TimerStatus(TimerErrorCode::SUCCESS);
 }

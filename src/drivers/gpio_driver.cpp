@@ -51,32 +51,30 @@ GpioStatus GpioDriver::SetPinValue (const PinDescription& pinDesc, PinValue valu
     {
         return GpioStatus(GpioErrorCode::INVALID_PIN_VALUE);
     }
-   
+    
     return GpioStatus(GpioErrorCode::SUCCESS);
 }
 
-GpioStatus GpioDriver::ReadPinValue (const PinDescription& pinDesc)
+GpioStatus GpioDriver::ReadPinValue (const PinDescription& pinDesc,  PinValue& outValue)
 {
     uint8_t pin = pinDesc.GetPin();
     volatile uint8_t* port = pinDesc.GetPort();
 
-    if (pin > MAX_NR_OF_PINS_PER_PORT)
+    if (pin >= MAX_NR_OF_PINS_PER_PORT)
     {
-        return GpioStatus(GpioErrorCode::PIN_INDEX_OUT_OF_RANGE, PinValue::LOW);
+        return GpioStatus(GpioErrorCode::PIN_INDEX_OUT_OF_RANGE); 
     }
-
-    PinValue value;
 
     if (*port & (1 << pin))
     {
-        value = PinValue::HIGH;
+        outValue = PinValue::HIGH;
     }
     else
     {
-        value = PinValue::LOW;
+        outValue = PinValue::LOW;
     }
 
-    return GpioStatus(GpioErrorCode::SUCCESS, value);
+    return GpioStatus(GpioErrorCode::SUCCESS);
 }
 
 GpioStatus GpioDriver::PinToggle (const PinDescription& pinDesc)
