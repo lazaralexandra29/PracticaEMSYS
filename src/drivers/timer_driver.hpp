@@ -52,43 +52,53 @@ class TimerStatus
 class TimerConfiguration
 {
     public:
-      TimerConfiguration(uint8_t id, TimerMode mode, Prescaler prescaler, uint16_t compareValue = 0) 
-        : m_timerId(id), m_mode(mode), m_prescaler(prescaler), m_compareValue(compareValue)
-        {}
-        
-        uint8_t GetTimerId() const 
-        { 
-            return m_timerId; 
-        }
+      TimerConfiguration(m_modeode mode, Prescaler prescaler)
+        : m_mode(mode), m_prescaler(prescaler)
+      {
 
-        TimerMode GetMode() const 
-        { 
-            return m_mode; 
-        }
-        
-        Prescaler GetPrescaler() const 
-        { 
-            return m_prescaler; 
-        }
+      }
 
     private:
-        const uint8_t m_timerId;
         const TimerMode m_mode;
         const Prescaler m_prescaler;
-        const uint16_t m_compareValue;
 };
 
 class TimerDriver{
     public:
-        TimerStatus Init(const TimerConfiguration& desc);
-        
-        TimerStatus SetCompareValue(uint8_t timer_id, uint16_t value);
-        
-        TimerStatus CheckElapsed(uint8_t timer_id, bool& elapsed);
+    
+        TimerDriver() : base_timer_counter_value_(0)
+        {
 
+        }
+
+        // Metoda de initializare a unui timer hardware;
+        // TIMERA, cel pe 16 bit;
+        // Baza de timp e constanta, la 1 ms;
+        TimerStatus Init(const TimerConfiguration& timer_config);
+
+        uint8_t CreateTimerSoftware();
+        TimerStatus RegisterPeriodicCallbakc(uint8_t timer_id, void (*callback)(), uint32_t period_ms);
+        TimerStatus UnregisterPeriodicCallback(uint8_t timer_id);
         TimerStatus Stop(uint8_t timer_id);   
 
-        TimerStatus Reset(uint8_t timer_id);   
+        protected:
+            uint16_t base_timer_counter_value_;
+
+
+
+        
 };
+
+ISR(TIMER1_COMPA_vect)
+{
+    if( MAX(UINT16_MAX == base_timer_counter_value_))
+    {
+        base_timer_counter_value_ = 0;
+    }
+    else
+    {
+        base_timer_counter_value_++;
+    }
+}
 
 #endif

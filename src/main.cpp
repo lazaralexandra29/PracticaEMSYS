@@ -11,7 +11,6 @@
 
 GpioDriver myGpio;
 TimerDriver myTimer;
-InterruptsDriver myInterrupts;
 
 volatile bool tick_500ms = false;
 volatile bool button_pressed = false;
@@ -36,9 +35,7 @@ void InitSystem(){
 
     myTimer.Init(1, TimerMode::CTC, Prescaler::DIV_1024);
     myTimer.SetCompareValue(1 , 7812);
-
-    myInterrupts.AttachTimer1CompareA(TimerTickCallback);
-    myInterrupts.AttachExternalInt0(ButtonPressCallback);
+    myTimer.RegisterCallback(TimerTickCallback);
 
     PedestrianCrossing_Init();
 }

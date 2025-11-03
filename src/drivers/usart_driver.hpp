@@ -46,6 +46,11 @@ class UsartStatus
             return m_errorCode;
         }
 
+        uint8_t GetReceivedByte() const
+        {
+            return byte_received_;
+        }
+
         bool IsSuccess() const
         {
             return m_errorCode == UsartErrorCode::SUCCESS;
@@ -53,6 +58,7 @@ class UsartStatus
 
     private:
         const UsartErrorCode m_errorCode;
+        uint8_t byte_received_;
 };
 
 class UsartDescription
@@ -100,14 +106,24 @@ class UsartDescription
 class UsartDriver
 {
     public:
-        UsartStatus Init(const UsartDescription& usartDesc,
-                         UsartBaudRate baudRate,
+        UsartStatus Init(UsartBaudRate baudRate,
                          UsartParity parity,
                          UsartStopBits stopBits);
 
-        UsartStatus TransmitByte(const UsartDescription& usartDesc, uint8_t data);
+        UsartStatus TransmitByte(uint8_t data);
 
-        UsartStatus ReceiveByte(const UsartDescription& usartDesc, uint8_t& outData);
+        UsartStatus ReceiveByte();
 };
+
+
+UartStatus myStatus = myUartObject.ReceiveByte();
+if(myStatus.IsError()) 
+{
+  // Close connection;  
+} 
+else 
+{
+    uint8_t receivedData = myStatus.GetReceivedByte();
+}
 
 #endif

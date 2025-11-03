@@ -42,6 +42,11 @@ class AdcStatus
             return m_errorCode;
         }
 
+        uint16_t GetValue() const
+        {
+            return value_;
+        }
+
         bool IsSuccess() const
         {
             return m_errorCode == AdcErrorCode::SUCCESS;
@@ -49,9 +54,10 @@ class AdcStatus
 
     private:
         const AdcErrorCode m_errorCode;
+        uint16_t value_;
 };
 
-class AdcDescription
+class AdcDescription // AdcConfiguration
 {
     public:
         AdcDescription(volatile uint8_t* admux, volatile uint8_t* adcsra, volatile uint8_t* adch, volatile uint8_t* adcl)
@@ -87,9 +93,9 @@ class AdcDescription
 class AdcDriver
 {
     public:
-        AdcStatus Init(const AdcDescription& adcDesc, AdcReference reference, AdcPrescaler prescaler);
+        AdcStatus Init(AdcReference reference, AdcPrescaler prescaler); // check prescaler la adc ?!
 
-        AdcStatus ReadChannel(const AdcDescription& adcDesc, uint8_t channel, uint16_t& outValue);
+        AdcStatus ReadChannel(uint8_t channel);
 };
 
 #endif
