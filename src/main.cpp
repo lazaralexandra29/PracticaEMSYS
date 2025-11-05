@@ -16,5 +16,16 @@ int main() {
 
     gpioDriver.SetPinValue(led, PinValue::HIGH);
 
+
+    //UartStatus myStatus = myUartObject.ReceiveByte();
+ //if(myStatus.IsError()) 
+ //{
+  // Close connection;  
+ //} 
+ //else 
+ //{
+    //uint8_t receivedData = myStatus.GetReceivedByte();
+ //}
+
     return 0; 
 }   

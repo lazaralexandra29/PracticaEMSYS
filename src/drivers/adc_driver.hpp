@@ -42,6 +42,7 @@ class AdcStatus
         return m_errorCode;
      }
 
+<<<<<<< HEAD
      uint16_t GetValue() const 
      {
         return value_;
@@ -62,6 +63,62 @@ class AdcDriver
      public: 
        AdcStatus Init(AdcReference reference, AdcPrescaler prescaler);
        AdcStatus ReadChannel(uint8_t channel);
+=======
+        uint16_t GetValue() const
+        {
+            return value_;
+        }
+
+        bool IsSuccess() const
+        {
+            return m_errorCode == AdcErrorCode::SUCCESS;
+        }
+
+    private:
+        const AdcErrorCode m_errorCode;
+        uint16_t value_;
+};
+
+class AdcDescription // AdcConfiguration
+{
+    public:
+        AdcDescription(volatile uint8_t* admux, volatile uint8_t* adcsra, volatile uint8_t* adch, volatile uint8_t* adcl)
+            : m_admux(admux), m_adcsra(adcsra), m_adch(adch), m_adcl(adcl) {}
+
+        volatile uint8_t* GetADMUX() const 
+        { 
+            return m_admux; 
+        }
+
+        volatile uint8_t* GetADCSRA() const 
+        { 
+            return m_adcsra; 
+        }
+
+        volatile uint8_t* GetADCH() const 
+        { 
+            return m_adch; 
+        }
+
+        volatile uint8_t* GetADCL() const 
+        { 
+            return m_adcl; 
+        }
+
+    private:
+        volatile uint8_t* m_admux;
+        volatile uint8_t* m_adcsra;
+        volatile uint8_t* m_adch;
+        volatile uint8_t* m_adcl;
+};
+
+class AdcDriver
+{
+    public:
+        AdcStatus Init(AdcReference reference, AdcPrescaler prescaler); // check prescaler la adc ?!
+
+        AdcStatus ReadChannel(uint8_t channel);
+>>>>>>> 9feb94007c2f3bbfea0b998e71b1a3f5205ab61b
 };
 
 #endif
