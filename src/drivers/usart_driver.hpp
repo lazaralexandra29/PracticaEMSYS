@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-enum class UsartBaudRate : uint32_t
+enum class UsartBaudRate : uint32_t 
 {
     BR9600 = 9600,
     BR19200 = 19200,
@@ -12,20 +12,20 @@ enum class UsartBaudRate : uint32_t
     BR115200 = 115200
 };
 
-enum class UsartParity : uint8_t
+enum class UsartParity : uint8_t 
 {
     NONE = 0,
     EVEN = 1,
     ODD  = 2
 };
 
-enum class UsartStopBits : uint8_t
+enum class UsartStopBits : uint8_t 
 {
     ONE = 1,
     TWO = 2
 };
 
-enum class UsartErrorCode : int8_t
+enum class UsartErrorCode : int8_t 
 {
     SUCCESS = 0,
     INVALID_BAUDRATE = -1,
@@ -35,79 +35,38 @@ enum class UsartErrorCode : int8_t
     RECEIVE_ERROR = -5
 };
 
-class UsartStatus
+class UsartStatus 
 {
-    public:
-        UsartStatus(UsartErrorCode errorCode = UsartErrorCode::SUCCESS)
-            : m_errorCode(errorCode) {}
+   public:
+    UsartStatus(UsartErrorCode errorCode = UsartErrorCode::SUCCESS, uint8_t receivedByte = 0)
+        : m_errorCode(errorCode), byte_received_(receivedByte) {}
 
-        UsartErrorCode GetErrorCode() const
-        {
-            return m_errorCode;
-        }
+    UsartErrorCode GetErrorCode() const 
+    {
+        return m_errorCode;
+    }
 
-        bool IsSuccess() const
-        {
-            return m_errorCode == UsartErrorCode::SUCCESS;
-        }
+    uint8_t GetReceivedByte() const 
+    {
+        return byte_received_;
+    }
+
+    bool IsSuccess() const 
+    {
+        return m_errorCode == UsartErrorCode::SUCCESS;
+    }
 
     private:
-        const UsartErrorCode m_errorCode;
+     const UsartErrorCode m_errorCode;
+     const uint8_t byte_received_ = 0;
 };
 
-class UsartDescription
+class UsartDriver 
 {
     public:
-        UsartDescription(volatile uint8_t* ubrr, volatile uint8_t* ucsrA,
-                         volatile uint8_t* ucsrB, volatile uint8_t* ucsrC,
-                         volatile uint8_t* udr)
-            : m_ubrr(ubrr), m_ucsrA(ucsrA), m_ucsrB(ucsrB),
-              m_ucsrC(ucsrC), m_udr(udr) {}
-
-        volatile uint8_t* GetUBRR() const 
-        { 
-            return m_ubrr; 
-        }
-        
-        volatile uint8_t* GetUCSRA() const 
-        { 
-            return m_ucsrA; 
-        }
-
-        volatile uint8_t* GetUCSRB() const 
-        {
-             return m_ucsrB; 
-        }
-
-        volatile uint8_t* GetUCSRC() const 
-        { 
-            return m_ucsrC; 
-        }
-
-        volatile uint8_t* GetUDR() const 
-        { 
-            return m_udr; 
-        }
-
-    private:
-        volatile uint8_t* m_ubrr;
-        volatile uint8_t* m_ucsrA;
-        volatile uint8_t* m_ucsrB;
-        volatile uint8_t* m_ucsrC;
-        volatile uint8_t* m_udr;
-};
-
-class UsartDriver
-{
-    public:
-        UsartStatus Init(const UsartDescription& usartDesc,
-                         UsartBaudRate baudRate,
-                         UsartParity parity,
-                         UsartStopBits stopBits);
-
-        UsartStatus TransmitByte(const UsartDescription& usartDesc, uint8_t data);
-
-        UsartStatus ReceiveByte(const UsartDescription& usartDesc, uint8_t& outData);
+     UsartStatus Init(UsartBaudRate baudRate, UsartParity parity, UsartStopBits stopBits);
+     UsartStatus TransmitByte(uint8_t data);
+     UsartStatus ReceiveByte();
 };
 
 #endif

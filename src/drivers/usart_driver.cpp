@@ -1,59 +1,56 @@
-#include "usart_driver.hpp"
+#include "drivers/usart_driver.hpp"
 #include <avr/io.h>
 
-UsartStatus UsartDriver::Init(const UsartDescription& usartDesc, UsartBaudRate baudRate, UsartParity parity, UsartStopBits stopBits)
+UsartStatus UsartDriver::Init(UsartBaudRate baudRate, UsartParity parity, UsartStopBits stopBits)
 {
-    uint16_t ubrrValue = static_cast<uint32_t>(F_CPU) / (16UL * static_cast<uint32_t>(baudRate)) - 1;
-    
-    *(usartDesc.GetUBRR()) = static_cast<uint8_t>(ubrrValue);
+    uint16_t ubrr_value = (F_CPU / (16UL * static_cast<uint32_t>(baudRate))) - 1;
 
-    // Enable transmitter and receiver
-    *(usartDesc.GetUCSRB()) |= (1 << RXEN0) | (1 << TXEN0);
+    if (ubrr_value > 4095)
+        return UsartStatus(UsartErrorCode::INVALID_BAUDRATE);
 
-    // Configure frame format: 8 data bits
-    *(usartDesc.GetUCSRC()) |= (1 << UCSZ01) | (1 << UCSZ00);
+    UBRR0H = static_cast<uint8_t>(ubrr_value >> 8);
+    UBRR0L = static_cast<uint8_t>(ubrr_value & 0xFF);
 
-    // Configure parity
-    *(usartDesc.GetUCSRC()) &= ~(1 << UPM01 | 1 << UPM00);
+    UCSR0B = (1 << RXEN0) | (1 << TXEN0); 
+
+    uint8_t config = 0;
+
     switch (parity)
     {
-        case UsartParity::NONE: break;
-        case UsartParity::EVEN: *(usartDesc.GetUCSRC()) |= (1 << UPM01); break;
-        case UsartParity::ODD:  *(usartDesc.GetUCSRC()) |= (1 << UPM01) | (1 << UPM00); break;
+        case UsartParity::NONE: config &= ~((1 << UPM01) | (1 << UPM00)); break;
+        case UsartParity::EVEN: config |= (1 << UPM01); break;
+        case UsartParity::ODD:  config |= (1 << UPM01) | (1 << UPM00); break;
         default: return UsartStatus(UsartErrorCode::INVALID_PARITY);
     }
 
-    // Configure stop bits
-    *(usartDesc.GetUCSRC()) &= ~(1 << USBS0);
     switch (stopBits)
     {
-        case UsartStopBits::ONE: break;
-        case UsartStopBits::TWO: *(usartDesc.GetUCSRC()) |= (1 << USBS0); break;
+        case UsartStopBits::ONE: config &= ~(1 << USBS0); break;
+        case UsartStopBits::TWO: config |= (1 << USBS0); break;
         default: return UsartStatus(UsartErrorCode::INVALID_STOP_BITS);
     }
 
-    return UsartStatus(UsartErrorCode::SUCCESS);
-}
-
-UsartStatus UsartDriver::TransmitByte(const UsartDescription& usartDesc, uint8_t data)
-{
-    // Wait until transmit buffer is empty
-    while (!(*(usartDesc.GetUCSRA()) & (1 << UDRE0)));
-
-    *(usartDesc.GetUDR()) = data;
-
-    // Wait until transmission is complete
-    while (!(*(usartDesc.GetUCSRA()) & (1 << TXC0)));
+    config |= (1 << UCSZ01) | (1 << UCSZ00);
+    UCSR0C = config;
 
     return UsartStatus(UsartErrorCode::SUCCESS);
 }
 
-UsartStatus UsartDriver::ReceiveByte(const UsartDescription& usartDesc, uint8_t& outData)
+UsartStatus UsartDriver::TransmitByte(uint8_t data)
 {
-    // Wait until data is received
-    while (!(*(usartDesc.GetUCSRA()) & (1 << RXC0)));
+    while (!(UCSR0A & (1 << UDRE0))) {} 
 
-    outData = *(usartDesc.GetUDR());
+    UDR0 = data;
+
+    while (!(UCSR0A & (1 << TXC0))) {}
 
     return UsartStatus(UsartErrorCode::SUCCESS);
+}
+
+UsartStatus UsartDriver::ReceiveByte()
+{
+    while (!(UCSR0A & (1 << RXC0))) {} 
+
+    uint8_t received = UDR0;
+    return UsartStatus(UsartErrorCode::SUCCESS, received);
 }

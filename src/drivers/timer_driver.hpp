@@ -3,20 +3,19 @@
 
 #include <stdint.h>
 
-enum class TimerMode : uint8_t {
+enum class TimerMode : uint8_t 
+{
     NORMAL = 0,
     CTC = 1
 };
 
-enum class Prescaler : uint8_t {
-    DIV_0 = 0, 
-    DIV_1 = 1,
-    DIV_8 = 2,
-    DIV_32 = 3,
-    DIV_64 = 4,
-    DIV_128 = 5,
-    DIV_256 = 6,
-    DIV_1024 = 7
+enum class Prescaler : uint8_t 
+{
+    DIV_1 = 0,
+    DIV_8 = 1,
+    DIV_64 = 2,
+    DIV_256 = 3,
+    DIV_1024 = 4
 };
 
 enum class TimerErrorCode : int8_t
@@ -52,43 +51,42 @@ class TimerStatus
 class TimerConfiguration
 {
     public:
-      TimerConfiguration(uint8_t id, TimerMode mode, Prescaler prescaler, uint16_t compareValue = 0) 
-        : m_timerId(id), m_mode(mode), m_prescaler(prescaler), m_compareValue(compareValue)
-        {}
-        
-        uint8_t GetTimerId() const 
-        { 
-            return m_timerId; 
-        }
+     TimerConfiguration(TimerMode mode, Prescaler prescaler)
+        : m_mode(mode), m_prescaler(prescaler)
+    {}
 
-        TimerMode GetMode() const 
-        { 
-            return m_mode; 
-        }
-        
-        Prescaler GetPrescaler() const 
-        { 
-            return m_prescaler; 
-        }
+    TimerMode GetMode() const 
+    {
+        return m_mode;
+    }
+
+    Prescaler GetPrescaler() const 
+    {
+        return m_prescaler;
+    }
 
     private:
-        const uint8_t m_timerId;
-        const TimerMode m_mode;
-        const Prescaler m_prescaler;
-        const uint16_t m_compareValue;
+     const TimerMode m_mode;
+     const Prescaler m_prescaler;
 };
 
-class TimerDriver{
+class TimerDriver
+{
     public:
-        TimerStatus Init(const TimerConfiguration& desc);
+        TimerDriver() : base_timer_counter_value_(0) {};
         
-        TimerStatus SetCompareValue(uint8_t timer_id, uint16_t value);
-        
-        TimerStatus CheckElapsed(uint8_t timer_id, bool& elapsed);
+        //TimerStatus Init(const TimerConfiguration& timer_config);
 
+        TimerStatus InitTimer1(const TimerConfiguration& config);
+
+        uint8_t CreateTimerSoftware(); //poate sa primeasca cv
+        TimerStatus RegisterPeriodicCallback(uint8_t timer_id, void (*callback)(), uint32_t period_ms);
+        TimerStatus UnregisterPeriodicCallback(uint8_t timer_id);
         TimerStatus Stop(uint8_t timer_id);   
 
-        TimerStatus Reset(uint8_t timer_id);   
+    protected:
+     uint16_t base_timer_counter_value_;
+
 };
 
 #endif
