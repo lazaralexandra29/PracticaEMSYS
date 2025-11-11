@@ -1,31 +1,44 @@
+#include "drivers/timer_driver.hpp"
+#include "app/led_manager.hpp"
 #include <avr/io.h>
-#include <drivers/gpio_driver.hpp>  
+#include <stdint.h>
 
-int main() {
+#define LED_GREEN_PIN 3    
+#define LED_GREEN_PORT &PORTD
 
-    GpioDriver gpioDriver;
 
-    PinDescription led(&PORTB, 5u); //imi da eroare cu const la port, cu volatile nu!!!!
+TimerDriver timerDriver;
 
-    GpioStatus status = gpioDriver.SetPinDirection(led, PinDirection::OUT);
+LedManager whiteLed(LED_GREEN_PORT, LED_GREEN_PIN);
 
-    if(!status.IsSuccess()) 
+uint8_t blink_timer_id;
+
+void BlinkWhiteCallback()
+{
+    whiteLed.toggle();
+}
+
+int main()
+{
+    whiteLed.init();
+
+    TimerConfiguration timerConfig(TimerMode::CTC, Prescaler::DIV_64);
+    if (!timerDriver.InitTimer1(timerConfig).IsSuccess())
     {
-        return -1;
-    } 
+        while(1) {} 
+    }
 
-    gpioDriver.SetPinValue(led, PinValue::HIGH);
+    blink_timer_id = timerDriver.CreateTimerSoftware();
+    if (blink_timer_id < MAX_SOFTWARE_TIMERS)
+    {
+        timerDriver.RegisterPeriodicCallback(blink_timer_id, BlinkWhiteCallback, 100);
+    }
 
+    
+    while (1)
+    {
+        timerDriver.Run();    
+    }
 
-    //UartStatus myStatus = myUartObject.ReceiveByte();
- //if(myStatus.IsError()) 
- //{
-  // Close connection;  
- //} 
- //else 
- //{
-    //uint8_t receivedData = myStatus.GetReceivedByte();
- //}
-
-    return 0; 
-}   
+    return 0;
+}

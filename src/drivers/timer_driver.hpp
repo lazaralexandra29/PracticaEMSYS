@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+static constexpr uint8_t MAX_SOFTWARE_TIMERS = 8;
+
 enum class TimerMode : uint8_t 
 {
     NORMAL = 0,
@@ -75,14 +77,14 @@ class TimerDriver
     public:
         TimerDriver() : base_timer_counter_value_(0) {};
         
-        //TimerStatus Init(const TimerConfiguration& timer_config);
-
         TimerStatus InitTimer1(const TimerConfiguration& config);
 
-        uint8_t CreateTimerSoftware(); //poate sa primeasca cv
+        uint8_t CreateTimerSoftware();
         TimerStatus RegisterPeriodicCallback(uint8_t timer_id, void (*callback)(), uint32_t period_ms);
         TimerStatus UnregisterPeriodicCallback(uint8_t timer_id);
         TimerStatus Stop(uint8_t timer_id);   
+        
+        void Run();
 
     protected:
      uint16_t base_timer_counter_value_;

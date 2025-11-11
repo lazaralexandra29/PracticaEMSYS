@@ -16,10 +16,7 @@ static SoftwareTimer timers[MAX_SOFTWARE_TIMERS];
 
 static volatile uint16_t global_tick_counter = 0;
 
-TimerDriver::TimerDriver()
-    : base_timer_counter_value_(0)
-{}
-
+static volatile bool timer_tick_flag = false;
 
 TimerStatus TimerDriver::InitTimer1(const TimerConfiguration& config)
 {
@@ -117,23 +114,30 @@ TimerStatus TimerDriver::UnregisterPeriodicCallback(uint8_t timer_id)
     return TimerStatus(TimerErrorCode::SUCCESS);
 }
 
-ISR(TIMER0_COMPA_vect)
+void TimerDriver::Run()
 {
-    if (global_tick_counter >= 0xFFFF)
-        global_tick_counter = 0;
-    else
-        ++global_tick_counter;
-
-    for (uint8_t i = 0; i < MAX_SOFTWARE_TIMERS; ++i)
+    if (timer_tick_flag)
     {
-        if (timers[i].active && timers[i].callback)
+        cli();
+        timer_tick_flag = false;
+        sei();
+
+        for (uint8_t i = 0; i < MAX_SOFTWARE_TIMERS; ++i)
         {
-            timers[i].elapsed_ms++;
-            if (timers[i].elapsed_ms >= timers[i].period_ms)
+            if (timers[i].active && timers[i].callback)
             {
-                timers[i].elapsed_ms = 0;
-                timers[i].callback();
+                timers[i].elapsed_ms++;
+                if (timers[i].elapsed_ms >= timers[i].period_ms)
+                {
+                    timers[i].elapsed_ms = 0;
+                    timers[i].callback();
+                }
             }
         }
     }
+}
+
+ISR(TIMER1_COMPA_vect)
+{
+    timer_tick_flag = true;
 }
