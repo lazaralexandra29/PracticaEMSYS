@@ -69,13 +69,13 @@ class PinDescription
 class GpioDriver 
 {
     public:
-        GpioStatus SetPinDirection (const PinDescription& pinDesc, PinDirection direction);
+        GpioStatus SetPinDirection (const PinDescription& pinDesc, PinDirection direction, bool pullup = false);
 
         GpioStatus SetPinValue (const PinDescription& pinDesc, PinValue value);
 
         GpioStatus ReadPinValue (const PinDescription& pinDesc,  PinValue& outValue);
         
-        GpioStatus PinToggle (const PinDescription& pinDesc); //ne trebuie si valoarea de pe pin aici?
+        GpioStatus PinToggle (const PinDescription& pinDesc);
 };
 
 #endif

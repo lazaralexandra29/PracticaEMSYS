@@ -64,9 +64,12 @@ class UsartStatus
 class UsartDriver 
 {
     public:
-     UsartStatus Init(UsartBaudRate baudRate, UsartParity parity, UsartStopBits stopBits);
-     UsartStatus TransmitByte(uint8_t data);
-     UsartStatus ReceiveByte();
+     static UsartStatus Init(UsartBaudRate baudRate, UsartParity parity, UsartStopBits stopBits);
+     static UsartStatus TransmitByte(uint8_t data);
+     static UsartStatus ReceiveByte();
+
+     static void send(const char* data);
+     static bool receiveLineNonBlocking(char* buffer, uint8_t maxLength);
 };
 
 #endif

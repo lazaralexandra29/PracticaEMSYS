@@ -2,25 +2,35 @@
 
 #define MAX_NR_OF_PINS_PER_PORT 7
 
-GpioStatus GpioDriver::SetPinDirection(const PinDescription& pinDesc, PinDirection direction)
+GpioStatus GpioDriver::SetPinDirection(const PinDescription& pinDesc, PinDirection direction, bool pullup)
 {
     uint8_t pin = pinDesc.GetPin();
     volatile uint8_t* port = pinDesc.GetPort();
 
-    if(pin > MAX_NR_OF_PINS_PER_PORT)
+    volatile uint8_t* ddr = port - 1;
+
+    if (pin > MAX_NR_OF_PINS_PER_PORT)
     {
         return GpioStatus(GpioErrorCode::PIN_INDEX_OUT_OF_RANGE);
     }
 
     if (direction == PinDirection::OUT)
     {
-        *port |= (1 << pin);
+        *ddr |= (1 << pin);
     }
     else if (direction == PinDirection::IN)
     {
-        *port &= ~(1 << pin);
-    }
+        *ddr &= ~(1 << pin);
 
+        if(pullup)
+        {
+            *port |= (1 << pin);
+        }
+        else
+        {
+            *port &= ~(1 << pin);
+        }
+    }
     else
     {
         return GpioStatus(GpioErrorCode::INVALID_PIN_DIRECTION);
@@ -59,13 +69,15 @@ GpioStatus GpioDriver::ReadPinValue (const PinDescription& pinDesc,  PinValue& o
 {
     uint8_t pin = pinDesc.GetPin();
     volatile uint8_t* port = pinDesc.GetPort();
+    volatile uint8_t* pinReg = port - 2;
+
 
     if (pin >= MAX_NR_OF_PINS_PER_PORT)
     {
         return GpioStatus(GpioErrorCode::PIN_INDEX_OUT_OF_RANGE); 
     }
 
-    if (*port & (1 << pin))
+    if (*pinReg  & (1 << pin))
     {
         outValue = PinValue::HIGH;
     }

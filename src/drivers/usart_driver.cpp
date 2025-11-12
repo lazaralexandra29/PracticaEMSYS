@@ -1,5 +1,6 @@
 #include "drivers/usart_driver.hpp"
 #include <avr/io.h>
+#include <string.h>
 
 UsartStatus UsartDriver::Init(UsartBaudRate baudRate, UsartParity parity, UsartStopBits stopBits)
 {
@@ -42,7 +43,7 @@ UsartStatus UsartDriver::TransmitByte(uint8_t data)
 
     UDR0 = data;
 
-    while (!(UCSR0A & (1 << TXC0))) {}
+    //while (!(UCSR0A & (1 << TXC0))) {}
 
     return UsartStatus(UsartErrorCode::SUCCESS);
 }
@@ -53,4 +54,45 @@ UsartStatus UsartDriver::ReceiveByte()
 
     uint8_t received = UDR0;
     return UsartStatus(UsartErrorCode::SUCCESS, received);
+}
+
+void UsartDriver::send(const char* data)
+{
+    if (data == nullptr) return;
+
+    size_t len = strlen(data);
+    
+    for (size_t i = 0; i < len; ++i)
+    {
+        TransmitByte(data[i]);
+    }
+}
+
+bool UsartDriver::receiveLineNonBlocking(char* buffer, uint8_t maxLength)
+{
+    static uint8_t index = 0;
+
+    if (index >= maxLength - 1)
+    {
+        buffer[index] = '\0';
+        index = 0;
+        return true;
+    }
+
+    // Verifică dacă există un byte disponibil
+    if ((UCSR0A & (1 << RXC0)) != 0)
+    {
+        char c = UDR0;
+
+        if (c == '\r' || c == '\n')
+        {
+            buffer[index] = '\0';
+            index = 0;
+            return true;
+        }
+
+        buffer[index++] = c;
+    }
+
+    return false; // linia nu e completă încă
 }
