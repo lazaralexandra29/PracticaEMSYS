@@ -1,111 +1,143 @@
-#include <drivers/timer_driver.h>
+#include "drivers/timer_driver.hpp"
 #include <avr/io.h>
+#include <avr/interrupt.h>
 
-static uint8_t GetPrescalerBits(uint8_t timer_id, Prescaler prescaler) {
-    switch (prescaler) {
-        case Prescaler::DIV_0: return 0;
-    
-        case Prescaler::DIV_1: return 1;
+#define MAX_SOFTWARE_TIMERS 8
 
-        case Prescaler::DIV_8: return 2;
+struct SoftwareTimer
+{
+    bool active;
+    uint32_t period_ms;
+    uint32_t elapsed_ms;
+    void (*callback)();
+};
 
-        case Prescaler::DIV_32:
-         if(timer_id == 2) return 3;
-        return 0;
-        break;
+static SoftwareTimer timers[MAX_SOFTWARE_TIMERS];
 
+static volatile uint16_t global_tick_counter = 0;
+
+static volatile bool timer_tick_flag = false;
+
+TimerStatus TimerDriver::InitTimer1(const TimerConfiguration& config)
+{
+    TCCR1A = 0;
+    TCCR1B = 0;
+
+    switch (config.GetMode())
+    {
+        case TimerMode::CTC:
+            TCCR1B |= (1 << WGM12);
+            break;
+        case TimerMode::NORMAL:
+        TCCR1B &= ~(1 << WGM12); 
+            break;
+        default:
+            return TimerStatus(TimerErrorCode::INVALID_TIMER_MODE);
+    }
+
+    switch (config.GetPrescaler())
+    {
+        case Prescaler::DIV_1:
+            TCCR1B |= (1 << CS10);
+            break;
+        case Prescaler::DIV_8:
+            TCCR1B |= (1 << CS11);
+            break;
         case Prescaler::DIV_64:
-         if(timer_id == 2) return 4;
-        return 3;
-
-        case Prescaler::DIV_128:
-         if(timer_id == 2) return 5;
-        return 0;
-
+            TCCR1B |= (1 << CS11) | (1 << CS10);
+            break;
         case Prescaler::DIV_256:
-         if(timer_id == 2) return 6;
-        return 4;
-
+            TCCR1B |= (1 << CS12);
+            break;
         case Prescaler::DIV_1024:
-         if(timer_id == 2) return 7;
-        return 5;
-
+            TCCR1B |= (1 << CS12) | (1 << CS10);
+            break;
         default:
-         return 0;
+            return TimerStatus(TimerErrorCode::INVALID_PRESCALER);
     }
 
+    OCR1A = 249;
+
+    TIMSK1 |= (1 << OCIE1A);
+
+    sei();
+
+    return TimerStatus(TimerErrorCode::SUCCESS);
 }
 
-int8_t TimerDriver :: Init(uint8_t timer_id, TimerMode mode, Prescaler prescaler) {
-    uint8_t cs_bits = GetPrescalerBits(timer_id, prescaler);
-
-    switch (timer_id) {
-        case 0:
-         TCCR0A = (mode == TimerMode::CTC) ? (1 << WGM01) : 0;
-         TCCR0B = cs_bits;
-         TCNT0 = 0;
-        break;
-
-        case 1:
-         TCCR1A = 0;
-         TCCR1B = (mode == TimerMode::CTC) ? (1 << WGM12) : 0;
-         TCCR1B |= cs_bits;
-         TCNT1 = 0;
-        break;
-
-        case 2:
-         TCCR2A = (mode == TimerMode::CTC) ? (1 << WGM21) : 0;
-         TCCR2B = cs_bits;
-         TCNT2 = 0;
-        break;
-
-        default:
-         return -1;
+uint8_t TimerDriver::CreateTimerSoftware()
+{
+    for (uint8_t i = 0; i < MAX_SOFTWARE_TIMERS; ++i)
+    {
+        if (!timers[i].active)
+        {
+            timers[i].active = true;
+            timers[i].elapsed_ms = 0;
+            timers[i].period_ms = 0;
+            timers[i].callback = nullptr;
+            return i;
+        }
     }
-    return 0;
+    return MAX_SOFTWARE_TIMERS;
 }
 
-int8_t TimerDriver::SetCompareValue(uint8_t timer_id, uint16_t value) {
-    if( (timer_id ==0 || timer_id == 2) && value > 255) return -2;
 
-    switch (timer_id) {
-        case 0:
-         OCR0A = static_cast<uint8_t>(value);
-        break;
+TimerStatus TimerDriver::RegisterPeriodicCallback(uint8_t timer_id, void (*callback)(), uint32_t period_ms)
+{
+    if (timer_id >= MAX_SOFTWARE_TIMERS || callback == nullptr || period_ms == 0)
+        return TimerStatus(TimerErrorCode::INVALID_TIMER_ID);
 
-        case 1:
-         OCR1A = value;
-        break;
+    timers[timer_id].callback = callback;
+    timers[timer_id].period_ms = period_ms;
+    timers[timer_id].elapsed_ms = 0;
+    timers[timer_id].active = true;
 
-        case 2:
-         OCR2A = static_cast<uint8_t>(value);
-        break;
-
-        default:
-         return -1;
-    }
-    return 0;
+    return TimerStatus(TimerErrorCode::SUCCESS);
 }
 
-bool TimerDriver::HasElapsed(uint8_t timer_id) {
-    bool elapsed = false;
+TimerStatus TimerDriver::Stop(uint8_t timer_id)
+{
+    if (timer_id >= MAX_SOFTWARE_TIMERS)
+        return TimerStatus(TimerErrorCode::INVALID_TIMER_ID);
 
-    switch (timer_id) {
-        case 0: 
-         elapsed = (TIFR0 & (1 << OCF0A));
-         if(elapsed) TIFR0 = (1 << OCF0A);
-        break;
+    timers[timer_id].active = false;
+    return TimerStatus(TimerErrorCode::SUCCESS);
+}
 
-        case 1: 
-         elapsed = (TIFR1 & (1 << OCF1A));
-         if(elapsed) TIFR1 = (1 << OCF1A);
-        break;
+TimerStatus TimerDriver::UnregisterPeriodicCallback(uint8_t timer_id)
+{
+    if (timer_id >= MAX_SOFTWARE_TIMERS)
+        return TimerStatus(TimerErrorCode::INVALID_TIMER_ID);
 
-        case 2: 
-         elapsed = (TIFR2 & (1 << OCF2A));
-         if(elapsed) TIFR2 = (1 << OCF2A);
-        break;
+    timers[timer_id].callback = nullptr;
+    timers[timer_id].active = false;
+    return TimerStatus(TimerErrorCode::SUCCESS);
+}
+
+void TimerDriver::Run()
+{
+    if (timer_tick_flag)
+    {
+        cli();
+        timer_tick_flag = false;
+        sei();
+
+        for (uint8_t i = 0; i < MAX_SOFTWARE_TIMERS; ++i)
+        {
+            if (timers[i].active && timers[i].callback)
+            {
+                timers[i].elapsed_ms++;
+                if (timers[i].elapsed_ms >= timers[i].period_ms)
+                {
+                    timers[i].elapsed_ms = 0;
+                    timers[i].callback();
+                }
+            }
+        }
     }
+}
 
-    return elapsed;
+ISR(TIMER1_COMPA_vect)
+{
+    timer_tick_flag = true;
 }
