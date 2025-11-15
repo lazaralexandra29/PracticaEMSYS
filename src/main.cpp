@@ -5,73 +5,136 @@
 #include <app/adc_manager.hpp>
 #include "app/button_manager.hpp"
 #include <app/command_manager.hpp>
+#include "app/traffic_light_manager.hpp"
+#include "app/pedestrian_button_manager.hpp"
+#include "app/pedestrian_light_manager.hpp"
+#include "app/buzzer_manager.hpp"
+#include "app/light_sensor_manager.hpp"
 #include <util/delay.h>
 #include <avr/io.h>
 #include <stdint.h>
 
 TimerDriver timerDriver;
 
+TrafficLightManager trafficLights(
+    TRAFFIC_LIGHT_LEFT_RED_PORT, TRAFFIC_LIGHT_LEFT_RED_PIN,
+    TRAFFIC_LIGHT_LEFT_YELLOW_PORT, TRAFFIC_LIGHT_LEFT_YELLOW_PIN,
+    TRAFFIC_LIGHT_LEFT_GREEN_PORT, TRAFFIC_LIGHT_LEFT_GREEN_PIN,
+    TRAFFIC_LIGHT_RIGHT_RED_PORT, TRAFFIC_LIGHT_RIGHT_RED_PIN,
+    TRAFFIC_LIGHT_RIGHT_YELLOW_PORT, TRAFFIC_LIGHT_RIGHT_YELLOW_PIN,
+    TRAFFIC_LIGHT_RIGHT_GREEN_PORT, TRAFFIC_LIGHT_RIGHT_GREEN_PIN
+);
+
 LedManager greenLed(LED_GREEN_PORT, LED_GREEN_PIN);
 LedManager redLed(LED_RED_PORT, LED_RED_PIN);
 LedManager yellowLed(LED_YELLOW_PORT, LED_YELLOW_PIN);
 
-ButtonManager buttonManager(BUTTON_PORT, BUTTON_PIN);
+ButtonManager buttonRight(BUTTON_RIGHT_PORT, BUTTON_RIGHT_PIN);
+ButtonManager buttonLeft(BUTTON_LEFT_PORT, BUTTON_LEFT_PIN);
 
-uint8_t blink_timer_id;
+ButtonManager buttonManager(BUTTON_RIGHT_PORT, BUTTON_RIGHT_PIN);
 
-void BlinkWhiteCallback()
-{
-    greenLed.toggle();
-}
+PedestrianLightManager pedestrianLights(
+    PEDESTRIAN_LEFT_RED_PORT, PEDESTRIAN_LEFT_RED_PIN,
+    PEDESTRIAN_LEFT_GREEN_PORT, PEDESTRIAN_LEFT_GREEN_PIN,
+    PEDESTRIAN_RIGHT_RED_PORT, PEDESTRIAN_RIGHT_RED_PIN,
+    PEDESTRIAN_RIGHT_GREEN_PORT, PEDESTRIAN_RIGHT_GREEN_PIN
+);
+
+BuzzerManager buzzers(
+    BUZZER_PORT, BUZZER_PIN, 
+    BUZZER_PORT, BUZZER_PIN
+);
+
+PedestrianButtonManager pedestrianButtonManager(
+    &buttonRight, 
+    &buttonLeft,
+    &trafficLights, 
+    &pedestrianLights, 
+    &buzzers, 
+    &timerDriver
+);
 
 int main()
 {
     UsartDriver::Init(UsartBaudRate::BR9600, UsartParity::NONE, UsartStopBits::ONE);
 
+    trafficLights.init();
+    trafficLights.setState(TrafficLightState::GREEN); 
+
     greenLed.init();
     redLed.init();
     yellowLed.init();
 
-    redLed.registerInstance(1);   
+    redLed.registerInstance(1);
     yellowLed.registerInstance(2);
 
-    buttonManager.init();
+    buttonRight.init();
+    buttonLeft.init();
 
-    UsartDriver::send("System initialized. Waiting for button press...\r\n");
+    pedestrianLights.init();
+
+    buzzers.init();
+
+    pedestrianButtonManager.init();
     
+    AdcManager::init();
+    LightSensorManager::init();
+
+    UsartDriver::send("System initialized. Traffic lights synchronized. Two buttons configured (INT0=right, INT1=left).\r\n");
+    trafficLights.reportState();
+
     TimerConfiguration timerConfig(TimerMode::CTC, Prescaler::DIV_64);
     if (!timerDriver.InitTimer1(timerConfig).IsSuccess())
     {
-        while(1) {} 
-    }
-
-    blink_timer_id = timerDriver.CreateTimerSoftware();
-    if (blink_timer_id < MAX_SOFTWARE_TIMERS)
-    {
-        timerDriver.RegisterPeriodicCallback(blink_timer_id, BlinkWhiteCallback, 100);
+        while(1) {}
     }
 
     char commandBuffer[64];
-    uint16_t last_press_count = 0;
+    bool wasDark = false; 
+    uint32_t sensorCheckCounter = 0;  
+    
+    _delay_ms(200);
+
+    wasDark = LightSensorManager::isDark();
+    if (wasDark)
+    {
+        UsartDriver::send("[LIGHT_SENSOR] Status: NIGHT\r\n");
+    }
+    else
+    {
+        UsartDriver::send("[LIGHT_SENSOR] Status: DAY\r\n");
+    }
 
     while (1)
     {
-        buttonManager.update();
+        sensorCheckCounter++;
+        if (sensorCheckCounter >= 500000)
+        {
+            sensorCheckCounter = 0;
+            
+            bool isDark = LightSensorManager::isDark();
+            
+            if (isDark != wasDark)
+            {
+                if (isDark)
+                {
+                    UsartDriver::send("[LIGHT_SENSOR] Status: NIGHT\r\n");
+                }
+                else
+                {
+                    UsartDriver::send("[LIGHT_SENSOR] Status: DAY\r\n");
+                }
+                wasDark = isDark;
+            }
+        }
+        
+        pedestrianButtonManager.update();
 
         if (UsartDriver::receiveLineNonBlocking(commandBuffer, sizeof(commandBuffer)))
         {
             CommandManager::executeCommand(commandBuffer);
         }
-        
-        //uint16_t current_press_count = buttonManager.getPressCount();
-
-        //if (current_press_count != last_press_count)
-        //{
-           // ButtonManager::handle(); 
-           // last_press_count = current_press_count;
-        //}
-
-        timerDriver.Run();    
     }
 
     return 0;
