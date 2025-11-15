@@ -90,9 +90,15 @@ int main()
 
     wasDark = LightSensorManager::isDark();
     if (wasDark)
+    {
         UsartDriver::send("[LIGHT_SENSOR] Status: NIGHT\r\n");
+        PedestrianButtonManager::handleNight();
+    }
     else
+    {
         UsartDriver::send("[LIGHT_SENSOR] Status: DAY\r\n");
+        PedestrianButtonManager::handleDay();
+    }
 
     while (1)
     {
@@ -103,17 +109,23 @@ int main()
         pedestrianButtonManager.update();
 
         sensorCheckCounter++;
-        if (sensorCheckCounter >= 500000)
+        if (sensorCheckCounter >= 200000) // verifică mai des (sensibilitate sporită)
         {
             sensorCheckCounter = 0;
             bool isDark = LightSensorManager::isDark();
             if (isDark != wasDark)
             {
-                if (isDark)
-                    UsartDriver::send("[LIGHT_SENSOR] Status: NIGHT\r\n");
-                else
-                    UsartDriver::send("[LIGHT_SENSOR] Status: DAY\r\n");
                 wasDark = isDark;
+                if (isDark)
+                {
+                    UsartDriver::send("[LIGHT_SENSOR] Status: NIGHT -> applying night mode\r\n");
+                    PedestrianButtonManager::handleNight();
+                }
+                else
+                {
+                    UsartDriver::send("[LIGHT_SENSOR] Status: DAY -> restoring normal mode\r\n");
+                    PedestrianButtonManager::handleDay();
+                }
             }
         }
 

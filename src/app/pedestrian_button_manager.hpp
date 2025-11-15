@@ -35,6 +35,7 @@ public:
     static void handleInterruptRight();
     static void handleInterruptLeft();
     static void onSequenceTick(); 
+    static void onNightToggle();  // Callback pentru timer night mode
 
     static void handleNight();
     static void handleDay();
@@ -54,8 +55,10 @@ private:
     volatile bool leftPressedFlag;
 
     static constexpr uint16_t tickMs = 100;
+    static constexpr uint32_t nightTogglePeriodMs = 500;  // 500ms pentru toggle galben în night mode
     uint32_t phaseTicks;
     uint8_t tickTimerId;
+    uint8_t nightToggleTimerId;
 
     void startSequence();
     void enterState(PedestrianSequenceState st, uint32_t durationMs);

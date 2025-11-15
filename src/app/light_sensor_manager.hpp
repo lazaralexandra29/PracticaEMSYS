@@ -13,9 +13,8 @@ public:
     static uint16_t readValue();
     
 private:
-    // Praguri cu histerezis - mai "sensibile" pe trecerea spre zi
-    static constexpr uint16_t DARK_THRESHOLD_LOW = 250;   // sub acest nivel -> noapte
-    static constexpr uint16_t DARK_THRESHOLD_HIGH = 420;  // peste acest nivel -> zi
+    static constexpr uint16_t DARK_THRESHOLD_LOW = 250;   
+    static constexpr uint16_t DARK_THRESHOLD_HIGH = 420;
     static bool lastDarkState;
 };
 

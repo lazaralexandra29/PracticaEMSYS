@@ -1,4 +1,5 @@
 #include "app/pedestrian_button_manager.hpp"
+#include "drivers/usart_driver.hpp"
 #include <avr/interrupt.h>
 
 static PedestrianButtonManager* instance = nullptr;
@@ -22,7 +23,8 @@ PedestrianButtonManager::PedestrianButtonManager(
     rightPressedFlag(false),
     leftPressedFlag(false),
     phaseTicks(0),
-    tickTimerId(0xFF)
+    tickTimerId(0xFF),
+    nightToggleTimerId(0xFF)
 {
 }
 
@@ -74,6 +76,14 @@ void PedestrianButtonManager::handleInterruptLeft()
 void PedestrianButtonManager::onSequenceTick()
 {
     if (instance) instance->sequenceTick();
+}
+
+void PedestrianButtonManager::onNightToggle()
+{
+    if (instance && instance->trafficLights)
+    {
+        instance->trafficLights->toggleYellowLights();
+    }
 }
 
 void PedestrianButtonManager::update()
@@ -179,8 +189,77 @@ void PedestrianButtonManager::sequenceTick()
     }
 }
 
-void PedestrianButtonManager::handleNight() {}
-void PedestrianButtonManager::handleDay() {}
+void PedestrianButtonManager::handleNight()
+{
+    if (instance)
+    {
+        // Oprește orice secvență activă
+        instance->sequenceState = PedestrianSequenceState::IDLE;
+        instance->phaseTicks = 0;
+        
+        // Oprește buzzer-ul
+        instance->buzzers->setState(false);
+        
+        // Stinge toate LED-urile de la pietoni
+        instance->pedestrianLights->turnOffAll();
+        
+        // Setează semafoarele pe YELLOW (aprinde galben, stinge roșu și verde)
+        instance->trafficLights->setState(TrafficLightState::YELLOW);
+        
+        // Oprește timer-ul night mode dacă există deja
+        if (instance->nightToggleTimerId < 8)
+        {
+            instance->timerDriver->UnregisterPeriodicCallback(instance->nightToggleTimerId);
+        }
+        
+        // Creează și înregistrează timer pentru toggle LED-uri galbene
+        instance->nightToggleTimerId = instance->timerDriver->CreateTimerSoftware();
+        if (instance->nightToggleTimerId < 8)
+        {
+            instance->timerDriver->RegisterPeriodicCallback(
+                instance->nightToggleTimerId, 
+                onNightToggle, 
+                nightTogglePeriodMs
+            );
+        }
+        
+        UsartDriver::send("[NIGHT] Night mode activated: Yellow lights blinking (500ms), all other lights OFF.\r\n");
+    }
+    else
+    {
+        UsartDriver::send("ERR: PedestrianButtonManager not initialized.\r\n");
+    }
+}
+
+void PedestrianButtonManager::handleDay()
+{
+    if (instance)
+    {
+        // Oprește timer-ul night mode
+        if (instance->nightToggleTimerId < 8)
+        {
+            instance->timerDriver->UnregisterPeriodicCallback(instance->nightToggleTimerId);
+            instance->nightToggleTimerId = 0xFF;
+        }
+        
+        // Restabilește starea normală: verde pentru mașini, roșu pentru pietoni
+        instance->sequenceState = PedestrianSequenceState::IDLE;
+        instance->phaseTicks = 0;
+        
+        instance->trafficLights->setState(TrafficLightState::GREEN);
+        instance->pedestrianLights->setState(PedestrianLightState::RED);
+        instance->buzzers->setState(false);
+        
+        // Reactivează butoanele
+        instance->setButtonsEnabled(true);
+        
+        UsartDriver::send("[DAY] Night mode deactivated. Normal operation restored (green for cars, red for pedestrians).\r\n");
+    }
+    else
+    {
+        UsartDriver::send("ERR: PedestrianButtonManager not initialized.\r\n");
+    }
+}
 
 ISR(INT0_vect)
 {
