@@ -10,76 +10,33 @@
 
 enum class PedestrianSequenceState : uint8_t
 {
-    IDLE = 0,           
-    TRANSITION_TO_YELLOW = 1,
-    TRANSITION_TO_RED = 2,      
-    PEDESTRIAN_CROSSING = 3    
+    IDLE = 0,
+    WAIT_GREEN = 1,
+    TRANSITION_TO_YELLOW = 2,
+    PEDESTRIAN_CROSSING = 4,
+    PEDESTRIAN_BLINK = 5
 };
 
 class PedestrianButtonManager
 {
 public:
-    PedestrianButtonManager(ButtonManager* buttonRight, ButtonManager* buttonLeft,
-                           TrafficLightManager* trafficLights, 
-                           PedestrianLightManager* pedestrianLights, BuzzerManager* buzzers,
-                           TimerDriver* timerDriver);
-    
+    PedestrianButtonManager(ButtonManager* buttonRight,
+                            ButtonManager* buttonLeft,
+                            TrafficLightManager* trafficLights,
+                            PedestrianLightManager* pedestrianLights,
+                            BuzzerManager* buzzers,
+                            TimerDriver* timerDriver);
+
     void init();
     void update();
-    void setButtonsEnabled(bool enabled); 
-    void startNightMode();  
-    void stopNightMode(); 
-    
-    static void handleInterruptRight();  
-    static void handleInterruptLeft();  
 
-    static void onYellowTimeout();
-    static void onRedTimeout();
-    static void onPedestrianTimeout();
-    static void onStatusUpdate(); 
-    static void onBuzzerToggle();  // Nu mai e folosit 
-    static void onBuzzerBip();     // Nu mai e folosit 
-    static void onPedestrianBlink(); // Nu mai e folosit 
-    static void onYellowToggle(); 
-    
-    void logButtonPress(const char* side = "UNKNOWN");
-    void logSequenceState();
-    void logTimeRemaining();
-    void logButtonState();  
-    void logFullStatus();   
-    void logDetailedStatus(); 
-    
-    uint16_t getPressCount() const 
-    {
-        return pressCount; 
-    }
+    void setButtonsEnabled(bool enabled);
 
-    uint16_t getRightPressCount() const 
-    { 
-        return rightPressCount; 
-    }
+    static void handleInterruptRight();
+    static void handleInterruptLeft();
+    static void onSequenceTick(); 
 
-    uint16_t getLeftPressCount() const 
-    { 
-        return leftPressCount; 
-    }
-
-    bool isButtonPressed() const;
-    
-    PedestrianSequenceState getSequenceState() const 
-    { 
-        return sequenceState; 
-    }
-
-    uint8_t getSecondsRemaining() const;
-
-    bool arePedestriansCrossing() const 
-    { 
-        return sequenceState == PedestrianSequenceState::PEDESTRIAN_CROSSING; 
-    }
-    
-    static void handleGetStatus();
-    static void handleNight(); 
+    static void handleNight();
     static void handleDay();
 
 private:
@@ -89,29 +46,20 @@ private:
     PedestrianLightManager* pedestrianLights;
     BuzzerManager* buzzers;
     TimerDriver* timerDriver;
-    
-    uint16_t pressCount;       
-    uint16_t rightPressCount; 
-    uint16_t leftPressCount; 
-    PedestrianSequenceState sequenceState;
-    
-    bool buttonRightPressedFlag; 
-    bool buttonLeftPressedFlag;   
-    bool buttonsEnabled;
-    uint8_t secondsRemaining;
-    
-    uint8_t buzzerToggleTimerId;   // Nu mai e folosit
-    uint8_t buzzerBipTimerId;      // Nu mai e folosit 
-    uint8_t pedestrianBlinkTimerId; // Nu mai e folosit
-    uint8_t yellowToggleTimerId;   // Nu mai e folosit
-    bool buzzerBipState;           // Nu mai e folosit
 
-    bool nightModeActive;        
-    uint16_t nightToggleCounter;
-    
+    PedestrianSequenceState sequenceState;
+    bool buttonsEnabled;
+
+    volatile bool rightPressedFlag;
+    volatile bool leftPressedFlag;
+
+    static constexpr uint16_t tickMs = 100;
+    uint32_t phaseTicks;
+    uint8_t tickTimerId;
+
     void startSequence();
-    void stopAllTimers();
-    void updateSecondsRemaining();
+    void enterState(PedestrianSequenceState st, uint32_t durationMs);
+    void sequenceTick();
 };
 
 #endif

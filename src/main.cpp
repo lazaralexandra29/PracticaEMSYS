@@ -2,15 +2,14 @@
 #include "drivers/usart_driver.hpp"
 #include "drivers/timer_driver.hpp"
 #include "app/led_manager.hpp"
-#include <app/adc_manager.hpp>
+#include "app/adc_manager.hpp"
 #include "app/button_manager.hpp"
-#include <app/command_manager.hpp>
+#include "app/command_manager.hpp"
 #include "app/traffic_light_manager.hpp"
 #include "app/pedestrian_button_manager.hpp"
 #include "app/pedestrian_light_manager.hpp"
 #include "app/buzzer_manager.hpp"
 #include "app/light_sensor_manager.hpp"
-#include <util/delay.h>
 #include <avr/io.h>
 #include <stdint.h>
 
@@ -32,8 +31,6 @@ LedManager yellowLed(LED_YELLOW_PORT, LED_YELLOW_PIN);
 ButtonManager buttonRight(BUTTON_RIGHT_PORT, BUTTON_RIGHT_PIN);
 ButtonManager buttonLeft(BUTTON_LEFT_PORT, BUTTON_LEFT_PIN);
 
-ButtonManager buttonManager(BUTTON_RIGHT_PORT, BUTTON_RIGHT_PIN);
-
 PedestrianLightManager pedestrianLights(
     PEDESTRIAN_LEFT_RED_PORT, PEDESTRIAN_LEFT_RED_PIN,
     PEDESTRIAN_LEFT_GREEN_PORT, PEDESTRIAN_LEFT_GREEN_PIN,
@@ -42,30 +39,33 @@ PedestrianLightManager pedestrianLights(
 );
 
 BuzzerManager buzzers(
-    BUZZER_PORT, BUZZER_PIN, 
-    BUZZER_PORT, BUZZER_PIN
+    BUZZER_LEFT_PORT, BUZZER_LEFT_PIN,
+    BUZZER_RIGHT_PORT, BUZZER_RIGHT_PIN
 );
 
 PedestrianButtonManager pedestrianButtonManager(
-    &buttonRight, 
+    &buttonRight,
     &buttonLeft,
-    &trafficLights, 
-    &pedestrianLights, 
-    &buzzers, 
+    &trafficLights,
+    &pedestrianLights,
+    &buzzers,
     &timerDriver
 );
+
+char commandBuffer[64];
+bool wasDark = false;
+uint32_t sensorCheckCounter = 0;
 
 int main()
 {
     UsartDriver::Init(UsartBaudRate::BR9600, UsartParity::NONE, UsartStopBits::ONE);
 
     trafficLights.init();
-    trafficLights.setState(TrafficLightState::GREEN); 
+    trafficLights.setState(TrafficLightState::GREEN);
 
     greenLed.init();
     redLed.init();
     yellowLed.init();
-
     redLed.registerInstance(1);
     yellowLed.registerInstance(2);
 
@@ -73,11 +73,9 @@ int main()
     buttonLeft.init();
 
     pedestrianLights.init();
-
     buzzers.init();
-
     pedestrianButtonManager.init();
-    
+
     AdcManager::init();
     LightSensorManager::init();
 
@@ -90,46 +88,34 @@ int main()
         while(1) {}
     }
 
-    char commandBuffer[64];
-    bool wasDark = false; 
-    uint32_t sensorCheckCounter = 0;  
-    
-    _delay_ms(200);
-
     wasDark = LightSensorManager::isDark();
     if (wasDark)
-    {
         UsartDriver::send("[LIGHT_SENSOR] Status: NIGHT\r\n");
-    }
     else
-    {
         UsartDriver::send("[LIGHT_SENSOR] Status: DAY\r\n");
-    }
 
     while (1)
     {
+        timerDriver.Run();
+
+        buttonRight.update();
+        buttonLeft.update();
+        pedestrianButtonManager.update();
+
         sensorCheckCounter++;
         if (sensorCheckCounter >= 500000)
         {
             sensorCheckCounter = 0;
-            
             bool isDark = LightSensorManager::isDark();
-            
             if (isDark != wasDark)
             {
                 if (isDark)
-                {
                     UsartDriver::send("[LIGHT_SENSOR] Status: NIGHT\r\n");
-                }
                 else
-                {
                     UsartDriver::send("[LIGHT_SENSOR] Status: DAY\r\n");
-                }
                 wasDark = isDark;
             }
         }
-        
-        pedestrianButtonManager.update();
 
         if (UsartDriver::receiveLineNonBlocking(commandBuffer, sizeof(commandBuffer)))
         {
