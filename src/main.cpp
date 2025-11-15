@@ -109,7 +109,7 @@ int main()
         pedestrianButtonManager.update();
 
         sensorCheckCounter++;
-        if (sensorCheckCounter >= 200000) // verifică mai des (sensibilitate sporită)
+        if (sensorCheckCounter >= 200000)
         {
             sensorCheckCounter = 0;
             bool isDark = LightSensorManager::isDark();

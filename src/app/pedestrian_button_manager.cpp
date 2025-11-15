@@ -93,6 +93,7 @@ void PedestrianButtonManager::update()
     if (rightPressedFlag)
     {
         rightPressedFlag = false;
+        logInfo("[INFO] Right button pressed.\r\n");
         if (sequenceState == PedestrianSequenceState::IDLE)
             startSequence();
     }
@@ -100,6 +101,7 @@ void PedestrianButtonManager::update()
     if (leftPressedFlag)
     {
         leftPressedFlag = false;
+        logInfo("[INFO] Left button pressed.\r\n");
         if (sequenceState == PedestrianSequenceState::IDLE)
             startSequence();
     }
@@ -125,22 +127,26 @@ void PedestrianButtonManager::enterState(PedestrianSequenceState st, uint32_t du
             trafficLights->setState(TrafficLightState::GREEN);
             pedestrianLights->setState(PedestrianLightState::RED);
             buzzers->setState(false);
+            logInfo("[INFO] Traffic -> GREEN, Pedestrians -> RED.\r\n");
             break;
 
         case PedestrianSequenceState::TRANSITION_TO_YELLOW:
             trafficLights->setState(TrafficLightState::YELLOW);
             pedestrianLights->setState(PedestrianLightState::RED);
             buzzers->setState(false);
+            logInfo("[INFO] Traffic -> YELLOW, Pedestrians -> RED.\r\n");
             break;
 
         case PedestrianSequenceState::PEDESTRIAN_CROSSING:
             trafficLights->setState(TrafficLightState::RED);
             pedestrianLights->setState(PedestrianLightState::GREEN);
             buzzers->setState(true);
+            logInfo("[INFO] Traffic -> RED, Pedestrians -> GREEN.\r\n");
             break;
 
         case PedestrianSequenceState::PEDESTRIAN_BLINK:
             pedestrianLights->setState(PedestrianLightState::BLINKING);
+            logInfo("[INFO] Pedestrians -> GREEN (blinking). Traffic remains RED.\r\n");
             break;
 
         default: break;
@@ -182,6 +188,7 @@ void PedestrianButtonManager::sequenceTick()
                 trafficLights->setState(TrafficLightState::GREEN);
                 pedestrianLights->setState(PedestrianLightState::RED);
                 buzzers->setState(false); 
+                logInfo("[INFO] Sequence finished. Traffic -> GREEN, Pedestrians -> RED.\r\n");
             }
             break;
 
@@ -193,26 +200,21 @@ void PedestrianButtonManager::handleNight()
 {
     if (instance)
     {
-        // Oprește orice secvență activă
         instance->sequenceState = PedestrianSequenceState::IDLE;
         instance->phaseTicks = 0;
         
-        // Oprește buzzer-ul
         instance->buzzers->setState(false);
         
-        // Stinge toate LED-urile de la pietoni
         instance->pedestrianLights->turnOffAll();
         
-        // Setează semafoarele pe YELLOW (aprinde galben, stinge roșu și verde)
         instance->trafficLights->setState(TrafficLightState::YELLOW);
+        logInfo("[INFO] Night mode: Traffic -> YELLOW (blinking), Pedestrians OFF.\r\n");
         
-        // Oprește timer-ul night mode dacă există deja
         if (instance->nightToggleTimerId < 8)
         {
             instance->timerDriver->UnregisterPeriodicCallback(instance->nightToggleTimerId);
         }
         
-        // Creează și înregistrează timer pentru toggle LED-uri galbene
         instance->nightToggleTimerId = instance->timerDriver->CreateTimerSoftware();
         if (instance->nightToggleTimerId < 8)
         {
@@ -235,14 +237,12 @@ void PedestrianButtonManager::handleDay()
 {
     if (instance)
     {
-        // Oprește timer-ul night mode
         if (instance->nightToggleTimerId < 8)
         {
             instance->timerDriver->UnregisterPeriodicCallback(instance->nightToggleTimerId);
             instance->nightToggleTimerId = 0xFF;
         }
         
-        // Restabilește starea normală: verde pentru mașini, roșu pentru pietoni
         instance->sequenceState = PedestrianSequenceState::IDLE;
         instance->phaseTicks = 0;
         
@@ -250,8 +250,8 @@ void PedestrianButtonManager::handleDay()
         instance->pedestrianLights->setState(PedestrianLightState::RED);
         instance->buzzers->setState(false);
         
-        // Reactivează butoanele
         instance->setButtonsEnabled(true);
+        logInfo("[INFO] Day mode: Traffic -> GREEN, Pedestrians -> RED.\r\n");
         
         UsartDriver::send("[DAY] Night mode deactivated. Normal operation restored (green for cars, red for pedestrians).\r\n");
     }
@@ -269,4 +269,9 @@ ISR(INT0_vect)
 ISR(INT1_vect)
 {
     PedestrianButtonManager::handleInterruptLeft();
+}
+
+void PedestrianButtonManager::logInfo(const char* msg)
+{
+    UsartDriver::send(msg);
 }
