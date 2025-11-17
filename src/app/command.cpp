@@ -1,14 +1,22 @@
-#include "app/command_manager.hpp"
-#include "app/led_manager.hpp"
-#include "app/button_manager.hpp"
-#include "app/pedestrian_button_manager.hpp"
+#include "app/command.hpp"
+#include "app/pedestrian_button.hpp"
 #include "drivers/usart_driver.hpp"
 #include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
 
-void CommandManager::executeCommand(const char* command)
+Command::Command(PedestrianButton* pedestrian_button)
+    : pedestrian_button_(pedestrian_button)
 {
+}
+
+void Command::ExecuteCommand(const char* command)
+{
+    if (pedestrian_button_ == nullptr)
+    {
+        UsartDriver::send("ERR: PedestrianButton dependency missing.\r\n");
+        return;
+    }
+
     char buffer[64];
     strncpy(buffer, command, sizeof(buffer) - 1);
     buffer[sizeof(buffer) - 1] = '\0';
@@ -29,14 +37,12 @@ void CommandManager::executeCommand(const char* command)
 
     if (strcmp(token, "night") == 0 || strcmp(token, "Night") == 0 || strcmp(token, "NIGHT") == 0)
     {
-        PedestrianButtonManager::handleNight();
+        pedestrian_button_->HandleNightMode();
     }
-
     else if (strcmp(token, "day") == 0 || strcmp(token, "Day") == 0 || strcmp(token, "DAY") == 0)
     {
-        PedestrianButtonManager::handleDay();
+        pedestrian_button_->HandleDayMode();
     }
-
     else if (strcmp(token, "Help") == 0 || strcmp(token, "help") == 0 || strcmp(token, "HELP") == 0)
     {
         UsartDriver::send("\r\n--- Available Commands ---\r\n");
@@ -46,9 +52,10 @@ void CommandManager::executeCommand(const char* command)
         UsartDriver::send("exit - Exit program\r\n");
         UsartDriver::send("--------------------------\r\n");
     }
-    
     else
     {
         UsartDriver::send("ERR: Unknown command. Type 'help'.\r\n");
     }
 }
+
+
