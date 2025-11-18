@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-static constexpr uint8_t MAX_SOFTWARE_TIMERS = 8;
-
 enum class TimerMode : uint8_t 
 {
     NORMAL = 0,
