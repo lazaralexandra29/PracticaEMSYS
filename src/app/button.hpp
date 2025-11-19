@@ -13,8 +13,6 @@ public:
     bool Update();
     bool IsPressed() const;
     uint16_t GetPressCount() const;
-    static void Handle();  
-    static void ReportState();
 
 private:
     GpioDriver gpio_;

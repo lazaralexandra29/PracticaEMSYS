@@ -2,33 +2,30 @@
 #define LED_HPP
 
 #include "drivers/gpio_driver.hpp"
+#include "app/logger.hpp"
 #include <stdint.h>
 #include <stdbool.h>
 
-#define MAX_LEDS 3
-
-class Led 
+class Led
 {
 public:
-    Led(volatile uint8_t* port, uint8_t pin);
+    Led(volatile uint8_t* port, uint8_t pin, ILogger* logger = nullptr);
 
     void Init();
     void SetState(bool on);
     bool GetState() const;
     void Toggle();
 
-    void RegisterInstance(uint8_t index);
- 
-    static void Handle(uint8_t index, const char* state_str);
-    static void ReportLedState(uint8_t index);
+    static void SetLogger(ILogger* logger);
 
 private:
-    GpioDriver gpio_;           
-    PinDescription led_pin_;  
-    uint8_t led_index_; 
+    GpioDriver gpio_;
+    PinDescription led_pin_;
+    ILogger* logger_;
 
-    static Led* led_instances_[MAX_LEDS];
-    static bool IsIndexValid(uint8_t index) { return index > 0 && index <= MAX_LEDS; }
+    static ILogger* static_logger_;
+    ILogger* GetLogger() const;
+    static ILogger* GetStaticLogger();
 };
 
 #endif

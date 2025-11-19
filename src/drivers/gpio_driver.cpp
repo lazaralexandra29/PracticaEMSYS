@@ -65,7 +65,7 @@ GpioStatus GpioDriver::SetPinValue (const PinDescription& pinDesc, PinValue valu
     return GpioStatus(GpioErrorCode::SUCCESS);
 }
 
-GpioStatus GpioDriver::ReadPinValue (const PinDescription& pinDesc,  PinValue& outValue)
+GpioStatus GpioDriver::ReadPinValue (const PinDescription& pinDesc,  PinValue& outValue) const
 {
     uint8_t pin = pinDesc.GetPin();
     volatile uint8_t* port = pinDesc.GetPort();

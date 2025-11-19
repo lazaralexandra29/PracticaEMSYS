@@ -3,26 +3,12 @@
 
 #include <avr/io.h> 
 
-// Legacy LEDs (compatibilitate)
-#define LED_GREEN_PORT &PORTC
-#define LED_GREEN_PIN  3  
-
-#define LED_RED_PORT   &PORTC
-#define LED_RED_PIN    4  
-
-#define LED_YELLOW_PORT &PORTC
-#define LED_YELLOW_PIN  5  
-
 // Butoane pentru pietoni
 #define BUTTON_RIGHT_PORT   &PORTD  
 #define BUTTON_RIGHT_PIN    2
 
 #define BUTTON_LEFT_PORT    &PORTD 
 #define BUTTON_LEFT_PIN     3
-
-// Legacy definition (compatibilitate)
-#define BUTTON_PORT   BUTTON_RIGHT_PORT
-#define BUTTON_PIN    BUTTON_RIGHT_PIN
 
 // Semafoare pentru mașini (stânga)
 #define TRAFFIC_LIGHT_LEFT_RED_PORT    &PORTB
@@ -61,12 +47,6 @@
 // Buzzer pentru pietoni
 #define BUZZER_PORT   &PORTC
 #define BUZZER_PIN    1
-
-// Legacy definitions (compatibilitate cu BuzzerManager)
-#define BUZZER_LEFT_PORT   BUZZER_PORT
-#define BUZZER_LEFT_PIN    BUZZER_PIN
-#define BUZZER_RIGHT_PORT  BUZZER_PORT
-#define BUZZER_RIGHT_PIN   BUZZER_PIN
 
 // Senzor de lumina
 #define LIGHT_SENSOR_ADC_CHANNEL  0  

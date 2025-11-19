@@ -1,15 +1,16 @@
 #include "app/pedestrian_light.hpp"
-#include "drivers/usart_driver.hpp"
+#include "app/logger.hpp"
 
 PedestrianLight::PedestrianLight(
     volatile uint8_t* leftRedPort, uint8_t leftRedPin,
     volatile uint8_t* leftGreenPort, uint8_t leftGreenPin,
     volatile uint8_t* rightRedPort, uint8_t rightRedPin,
-    volatile uint8_t* rightGreenPort, uint8_t rightGreenPin
-) : left_red_(leftRedPort, leftRedPin),
-    left_green_(leftGreenPort, leftGreenPin),
-    right_red_(rightRedPort, rightRedPin),
-    right_green_(rightGreenPort, rightGreenPin),
+    volatile uint8_t* rightGreenPort, uint8_t rightGreenPin,
+    ILogger* logger
+) : left_red_(leftRedPort, leftRedPin, logger),
+    left_green_(leftGreenPort, leftGreenPin, logger),
+    right_red_(rightRedPort, rightRedPin, logger),
+    right_green_(rightGreenPort, rightGreenPin, logger),
     current_state_(PedestrianLightState::RED),
     blink_state_(false)
 {
@@ -74,6 +75,9 @@ void PedestrianLight::UpdateLights()
                 left_green_.SetState(true);
                 right_green_.SetState(true);
             }
+            break;
+            
+        default:
             break;
     }
 }

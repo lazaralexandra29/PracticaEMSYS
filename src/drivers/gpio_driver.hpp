@@ -73,7 +73,7 @@ class GpioDriver
 
         GpioStatus SetPinValue (const PinDescription& pinDesc, PinValue value);
 
-        GpioStatus ReadPinValue (const PinDescription& pinDesc,  PinValue& outValue);
+        GpioStatus ReadPinValue (const PinDescription& pinDesc,  PinValue& outValue) const;
         
         GpioStatus PinToggle (const PinDescription& pinDesc);
 };

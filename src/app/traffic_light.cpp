@@ -1,9 +1,10 @@
 #include "app/traffic_light.hpp"
-#include "drivers/usart_driver.hpp"
+#include "app/logger.hpp"
 #include <stdio.h>
 #include <string.h>
 
 TrafficLight* TrafficLight::instance_ = nullptr;
+ILogger* TrafficLight::static_logger_ = nullptr;
 
 TrafficLight::TrafficLight(
     volatile uint8_t* leftRedPort, uint8_t leftRedPin,
@@ -11,15 +12,21 @@ TrafficLight::TrafficLight(
     volatile uint8_t* leftGreenPort, uint8_t leftGreenPin,
     volatile uint8_t* rightRedPort, uint8_t rightRedPin,
     volatile uint8_t* rightYellowPort, uint8_t rightYellowPin,
-    volatile uint8_t* rightGreenPort, uint8_t rightGreenPin
-) : left_red_(leftRedPort, leftRedPin),
-    left_yellow_(leftYellowPort, leftYellowPin),
-    left_green_(leftGreenPort, leftGreenPin),
-    right_red_(rightRedPort, rightRedPin),
-    right_yellow_(rightYellowPort, rightYellowPin),
-    right_green_(rightGreenPort, rightGreenPin),
-    current_state_(TrafficLightState::RED)
+    volatile uint8_t* rightGreenPort, uint8_t rightGreenPin,
+    ILogger* logger
+) : left_red_(leftRedPort, leftRedPin, logger),
+    left_yellow_(leftYellowPort, leftYellowPin, logger),
+    left_green_(leftGreenPort, leftGreenPin, logger),
+    right_red_(rightRedPort, rightRedPin, logger),
+    right_yellow_(rightYellowPort, rightYellowPin, logger),
+    right_green_(rightGreenPort, rightGreenPin, logger),
+    current_state_(TrafficLightState::RED),
+    logger_(logger)
 {
+    if (static_logger_ == nullptr)
+    {
+        static_logger_ = logger;
+    }
 }
 
 void TrafficLight::Init()
@@ -54,7 +61,6 @@ void TrafficLight::UpdateLights()
     left_red_.SetState(false);
     left_yellow_.SetState(false);
     left_green_.SetState(false);
-    
     right_red_.SetState(false);
     right_yellow_.SetState(false);
     right_green_.SetState(false);
@@ -74,6 +80,9 @@ void TrafficLight::UpdateLights()
         case TrafficLightState::GREEN:
             left_green_.SetState(true);
             right_green_.SetState(true);
+            break;
+            
+        default:
             break;
     }
 }
@@ -97,9 +106,14 @@ void TrafficLight::ReportState()
 {
     char buffer[128];
     snprintf(buffer, sizeof(buffer), 
-        "[TRAFFIC] State: %s | Left: %s | Right: %s\r\n",
+        "[TRAFFIC] State: %s | Left: %s | Right: %s",
         GetStateString(), GetStateString(), GetStateString());
-    UsartDriver::send(buffer);
+    
+    ILogger* logger = GetLogger();
+    if (logger != nullptr)
+    {
+        logger->LogInfo(buffer);
+    }
 }
 
 void TrafficLight::RegisterInstance(TrafficLight* inst)
@@ -107,11 +121,38 @@ void TrafficLight::RegisterInstance(TrafficLight* inst)
     instance_ = inst;
 }
 
+ILogger* TrafficLight::GetLogger() const
+{
+    if (logger_ == nullptr)
+    {
+        if (static_logger_ == nullptr)
+        {
+            return static_cast<ILogger*>(Logger::GetInstance());
+        }
+        return static_logger_;
+    }
+    return logger_;
+}
+
+ILogger* TrafficLight::GetStaticLogger()
+{
+    if (static_logger_ == nullptr)
+    {
+        return static_cast<ILogger*>(Logger::GetInstance());
+    }
+    return static_logger_;
+}
+
+void TrafficLight::SetLogger(ILogger* logger)
+{
+    static_logger_ = logger;
+}
+
 void TrafficLight::HandleSetState(const char* state_str)
 {
     if (instance_ == nullptr)
     {
-        UsartDriver::send("ERR: Traffic lights not initialized.\r\n");
+        GetStaticLogger()->LogError("Traffic lights not initialized.");
         return;
     }
     
@@ -131,7 +172,7 @@ void TrafficLight::HandleSetState(const char* state_str)
     }
     else
     {
-        UsartDriver::send("ERR: Invalid state. Use RED, YELLOW, or GREEN.\r\n");
+        GetStaticLogger()->LogError("Invalid state. Use RED, YELLOW, or GREEN.");
         return;
     }
     
@@ -143,7 +184,7 @@ void TrafficLight::HandleGetState()
 {
     if (instance_ == nullptr)
     {
-        UsartDriver::send("ERR: Traffic lights not initialized.\r\n");
+        GetStaticLogger()->LogError("Traffic lights not initialized.");
         return;
     }
     

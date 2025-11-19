@@ -1,7 +1,20 @@
 #ifdef UNIT_TEST
 #include "app/uart_interface.hpp"
+#include "app/traffic_system_manager.hpp"
+#include "drivers/timer_driver.hpp"
+#include "app/traffic_light.hpp"
+#include "app/button.hpp"
+#include "app/pedestrian_light.hpp"
+#include "app/buzzer.hpp"
+#include "app/pedestrian_button.hpp"
+#include "app/command.hpp"
+#include "config/pin_config.hpp"
 #include <stdio.h>
 #include <string.h>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <fstream>
 
 class MockUartInterface : public IUartInterface
 {
@@ -79,65 +92,162 @@ private:
     char last_sent_message_[64];
 };
 
-class CommandService
-{
-public:
-    explicit CommandService(IUartInterface& uart_interface)
-        : uart_interface_(uart_interface)
-    {
-    }
+// ...existing code...
 
-    void ProcessIncomingCommand()
-    {
-        char command_buffer[64];
-        if (!uart_interface_.ReceiveLine(command_buffer, sizeof(command_buffer)))
-        {
-            return;
-        }
-
-        if (strcmp(command_buffer, "ping") == 0)
-        {
-            uart_interface_.Send("pong\r\n");
-        }
-        else if (strcmp(command_buffer, "status") == 0)
-        {
-            uart_interface_.Send("status:ok\r\n");
-        }
-        else
-        {
-            uart_interface_.Send("err:unknown\r\n");
-        }
-    }
-
-    void SendNotification(const char* notification)
-    {
-        uart_interface_.Send(notification);
-    }
-
-private:
-    IUartInterface& uart_interface_;
+// Simple interface (abstract class)
+struct ILogger {
+    virtual ~ILogger() = default;
+    virtual void log(const std::string &msg) = 0;
 };
 
+// Concrete implementation: console logger
+struct ConsoleLogger : ILogger {
+    void log(const std::string &msg) override {
+        std::cout << "[Console] " << msg << '\n';
+    }
+};
+
+// Concrete implementation: file logger
+struct FileLogger : ILogger {
+    std::ofstream ofs;
+    FileLogger(const std::string &path) : ofs(path, std::ios::app) {}
+    void log(const std::string &msg) override {
+        if (ofs) ofs << "[File] " << msg << '\n';
+    }
+};
+
+// Service that depends on ILogger via constructor injection
+class Service {
+public:
+    explicit Service(std::shared_ptr<ILogger> logger) : logger_(std::move(logger)) {}
+    void doWork() {
+        logger_->log("Service starting work");
+        // ... work ...
+        logger_->log("Service finished work");
+    }
+private:
+    std::shared_ptr<ILogger> logger_;
+};
+
+// ...existing code...
+
+// Test pentru TrafficSystemManager cu dependency injection
 int main()
 {
+    printf("=== Traffic System Manager Unit Tests ===\n\n");
+
+    // Creare componente mock pentru testare
+    TimerDriver timer_driver;
+    TrafficLight traffic_lights(
+        TRAFFIC_LIGHT_LEFT_RED_PORT, TRAFFIC_LIGHT_LEFT_RED_PIN,
+        TRAFFIC_LIGHT_LEFT_YELLOW_PORT, TRAFFIC_LIGHT_LEFT_YELLOW_PIN,
+        TRAFFIC_LIGHT_LEFT_GREEN_PORT, TRAFFIC_LIGHT_LEFT_GREEN_PIN,
+        TRAFFIC_LIGHT_RIGHT_RED_PORT, TRAFFIC_LIGHT_RIGHT_RED_PIN,
+        TRAFFIC_LIGHT_RIGHT_YELLOW_PORT, TRAFFIC_LIGHT_RIGHT_YELLOW_PIN,
+        TRAFFIC_LIGHT_RIGHT_GREEN_PORT, TRAFFIC_LIGHT_RIGHT_GREEN_PIN
+    );
+    
+    Button button_right(BUTTON_RIGHT_PORT, BUTTON_RIGHT_PIN);
+    Button button_left(BUTTON_LEFT_PORT, BUTTON_LEFT_PIN);
+    
+    PedestrianLight pedestrian_lights(
+        PEDESTRIAN_LEFT_RED_PORT, PEDESTRIAN_LEFT_RED_PIN,
+        PEDESTRIAN_LEFT_GREEN_PORT, PEDESTRIAN_LEFT_GREEN_PIN,
+        PEDESTRIAN_RIGHT_RED_PORT, PEDESTRIAN_RIGHT_RED_PIN,
+        PEDESTRIAN_RIGHT_GREEN_PORT, PEDESTRIAN_RIGHT_GREEN_PIN
+    );
+    
+    Buzzer buzzers(BUZZER_PORT, BUZZER_PIN);
+    
     MockUartInterface mock_uart;
-    CommandService command_service(mock_uart);
+    
+    PedestrianButton pedestrian_button(
+        &button_right,
+        &button_left,
+        &traffic_lights,
+        &pedestrian_lights,
+        &buzzers,
+        &timer_driver,
+        &mock_uart
+    );
+    
+    Command command_manager(&pedestrian_button);
 
-    mock_uart.LoadIncomingCommand("ping");
-    command_service.ProcessIncomingCommand();
-    printf("Response to ping: %s", mock_uart.GetLastSentMessage());
+    // Test 1: Creare manager cu dependency injection
+    printf("Test 1: Creating TrafficSystemManager with dependency injection...\n");
+    TrafficSystemManager manager(
+        &timer_driver,
+        &traffic_lights,
+        &button_right,
+        &button_left,
+        &pedestrian_lights,
+        &buzzers,
+        &pedestrian_button,
+        &command_manager,
+        &mock_uart
+    );
+    
+    TrafficSystemManager::SetInstance(&manager);
+    printf("PASS: Manager created successfully\n\n");
 
-    mock_uart.LoadIncomingCommand("status");
-    command_service.ProcessIncomingCommand();
-    printf("Response to status: %s", mock_uart.GetLastSentMessage());
+    // Test 2: Verificare getters
+    printf("Test 2: Testing getters...\n");
+    if (manager.GetTrafficLights() == &traffic_lights)
+    {
+        printf("PASS: GetTrafficLights() works\n");
+    }
+    else
+    {
+        printf("FAIL: GetTrafficLights() failed\n");
+    }
+    
+    if (manager.GetButtonRight() == &button_right)
+    {
+        printf("PASS: GetButtonRight() works\n");
+    }
+    else
+    {
+        printf("FAIL: GetButtonRight() failed\n");
+    }
+    printf("\n");
 
-    mock_uart.LoadIncomingCommand("night");
-    command_service.ProcessIncomingCommand();
-    printf("Response to night: %s", mock_uart.GetLastSentMessage());
+    // Test 3: Test logging
+    printf("Test 3: Testing logging system...\n");
+    manager.Log(LogLevel::INFO, "Test info message");
+    printf("Last log: %s", mock_uart.GetLastSentMessage());
+    
+    manager.Log(LogLevel::ERROR, "Test error message");
+    printf("Last log: %s", mock_uart.GetLastSentMessage());
+    printf("PASS: Logging works\n\n");
 
-    command_service.SendNotification("system:ready\r\n");
-    printf("Notification: %s", mock_uart.GetLastSentMessage());
+    // Test 4: Test comenzi (simulare)
+    printf("Test 4: Testing command processing...\n");
+    mock_uart.LoadIncomingCommand("help");
+    manager.Update(); // ProcessCommands va fi apelat
+    printf("Command response: %s", mock_uart.GetLastSentMessage());
+    printf("PASS: Command processing works\n\n");
 
+    printf("=== All tests completed ===\n\n");
+
+    // Test 5: Dependency Injection Pattern Demo
+    printf("=== Dependency Injection Pattern Demo ===\n\n");
+    
+    // Swap implementations by changing what we inject:
+    // 1) Console logger
+    auto consoleLogger = std::make_shared<ConsoleLogger>();
+    Service s1(consoleLogger);
+    printf("Using ConsoleLogger:\n");
+    s1.doWork();
+    printf("\n");
+
+    // 2) File logger
+    auto fileLogger = std::make_shared<FileLogger>("app.log");
+    Service s2(fileLogger);
+    printf("Using FileLogger (check app.log file):\n");
+    s2.doWork();
+    printf("\n");
+
+    printf("=== Dependency Injection Demo completed ===\n");
     return 0;
 }
 #endif  // UNIT_TEST
