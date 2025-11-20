@@ -43,6 +43,11 @@ public:
     void SetButtonsEnabled(bool enabled);
     void HandleNightMode();
     void HandleDayMode();
+    
+    bool IsSequenceActive() const;
+    bool IsNightMode() const;
+    void PauseNightToggle();
+    void ResumeNightToggle();
 
     void OnRightButtonInterrupt() override;
     void OnLeftButtonInterrupt() override;

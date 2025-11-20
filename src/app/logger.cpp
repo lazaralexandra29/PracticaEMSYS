@@ -69,4 +69,3 @@ const char* Logger::GetLogLevelPrefix(LogLevel level) const
             return "LOG";
     }
 }
-

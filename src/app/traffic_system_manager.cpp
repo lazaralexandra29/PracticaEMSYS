@@ -17,7 +17,8 @@ TrafficSystemManager::TrafficSystemManager(
     Buzzer* buzzers,
     PedestrianButton* pedestrian_button,
     Command* command_manager,
-    IUartInterface* uart_interface
+    IUartInterface* uart_interface,
+    UltrasonicSensor* ultrasonic_sensor
 )
     : timer_driver_(timer_driver),
       traffic_lights_(traffic_lights),
@@ -28,6 +29,7 @@ TrafficSystemManager::TrafficSystemManager(
       pedestrian_button_(pedestrian_button),
       command_manager_(command_manager),
       uart_interface_(uart_interface),
+      ultrasonic_sensor_(ultrasonic_sensor),
       initialized_(false),
       was_dark_(false),
       sensor_check_counter_(0)
@@ -126,20 +128,17 @@ bool TrafficSystemManager::Initialize()
         hardware_uart->Init(UsartBaudRate::BR9600, UsartParity::NONE, UsartStopBits::ONE);
     }
 
-    UsartDriver::send("System initialized. Traffic lights synchronized. Two buttons configured (INT0=right, INT1=left).\r\n");
-    traffic_lights_->ReportState();
-
     was_dark_ = LightSensor::IsDark();
     if (was_dark_)
     {
-        UsartDriver::send("[LIGHT_SENSOR] Status: NIGHT\r\n");
         pedestrian_button_->HandleNightMode();
     }
     else
     {
-        UsartDriver::send("[LIGHT_SENSOR] Status: DAY\r\n");
         pedestrian_button_->HandleDayMode();
     }
+
+    ReportInitialUltrasonicDistance();
 
     initialized_ = true;
     return true;
@@ -176,6 +175,11 @@ void TrafficSystemManager::InitializeComponents()
     if (pedestrian_button_)
     {
         pedestrian_button_->Init();
+    }
+
+    if (ultrasonic_sensor_)
+    {
+        ultrasonic_sensor_->Init();
     }
 }
 
@@ -281,6 +285,26 @@ const char* TrafficSystemManager::GetLogLevelPrefix(LogLevel level) const
             return "DEBUG";
         default:
             return "LOG";
+    }
+}
+
+void TrafficSystemManager::ReportInitialUltrasonicDistance()
+{
+    if (ultrasonic_sensor_ == nullptr)
+    {
+        return;
+    }
+
+    uint16_t distance_cm = 0;
+    if (ultrasonic_sensor_->MeasureDistanceCm(distance_cm))
+    {
+        char buffer[96];
+        snprintf(buffer, sizeof(buffer), "[ULTRASONIC] Distanta initiala: %u cm\r\n", distance_cm);
+        UsartDriver::send(buffer);
+    }
+    else
+    {
+        UsartDriver::send("[ULTRASONIC] Nu pot citi distanta (timeout)\r\n");
     }
 }
 

@@ -21,7 +21,10 @@ TrafficLight::TrafficLight(
     right_yellow_(rightYellowPort, rightYellowPin, logger),
     right_green_(rightGreenPort, rightGreenPin, logger),
     current_state_(TrafficLightState::RED),
-    logger_(logger)
+    logger_(logger),
+    red_shared_((leftRedPort == rightRedPort) && (leftRedPin == rightRedPin)),
+    yellow_shared_((leftYellowPort == rightYellowPort) && (leftYellowPin == rightYellowPin)),
+    green_shared_((leftGreenPort == rightGreenPort) && (leftGreenPin == rightGreenPin))
 {
     if (static_logger_ == nullptr)
     {
@@ -53,7 +56,10 @@ void TrafficLight::SetState(TrafficLightState state)
 void TrafficLight::ToggleYellowLights()
 {
     left_yellow_.Toggle();
-    right_yellow_.Toggle();
+    if (!yellow_shared_)
+    {
+        right_yellow_.Toggle();
+    }
 }
 
 void TrafficLight::UpdateLights()

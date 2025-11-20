@@ -57,5 +57,3 @@ void Command::ExecuteCommand(const char* command)
         UsartDriver::send("ERR: Unknown command. Type 'help'.\r\n");
     }
 }
-
-

@@ -13,15 +13,26 @@
 #include "app/pedestrian_button_router.hpp"
 #include "app/uart_interface.hpp"
 #include "app/logger.hpp"
+#include "app/ultrasonic_sensor.hpp"
+#include <stdio.h>
 #include <avr/io.h>
 #include <stdint.h>
 
+namespace
+{
+volatile bool g_ultrasonic_measure_request = false;
+constexpr uint32_t kUltrasonicMeasurePeriodMs = 1000;
+
+void UltrasonicMeasurementRequest()
+{
+    g_ultrasonic_measure_request = true;
+}
+}
+
 TimerDriver timerDriver;
 
-// Single logger instance for dependency injection
 Logger* logger = Logger::GetInstance();
 
-// Inject logger into traffic lights to avoid multiple logger instances
 TrafficLight trafficLights(
     TRAFFIC_LIGHT_LEFT_RED_PORT, TRAFFIC_LIGHT_LEFT_RED_PIN,
     TRAFFIC_LIGHT_LEFT_YELLOW_PORT, TRAFFIC_LIGHT_LEFT_YELLOW_PIN,
@@ -36,7 +47,6 @@ TrafficLight trafficLights(
 Button buttonRight(BUTTON_RIGHT_PORT, BUTTON_RIGHT_PIN);
 Button buttonLeft(BUTTON_LEFT_PORT, BUTTON_LEFT_PIN);
 
-// Inject logger into pedestrian lights to avoid multiple logger instances
 PedestrianLight pedestrianLights(
     PEDESTRIAN_LEFT_RED_PORT, PEDESTRIAN_LEFT_RED_PIN,
     PEDESTRIAN_LEFT_GREEN_PORT, PEDESTRIAN_LEFT_GREEN_PIN,
@@ -47,6 +57,11 @@ PedestrianLight pedestrianLights(
 
 Buzzer buzzers(BUZZER_PORT, BUZZER_PIN);
 HardwareUartInterface hardwareUart;
+UltrasonicSensor ultrasonicSensor(
+    ULTRASONIC_TRIG_PORT,
+    ULTRASONIC_TRIG_PIN,
+    ULTRASONIC_ECHO_PORT,
+    ULTRASONIC_ECHO_PIN);
 
 PedestrianButton pedestrianButton(
     &buttonRight,
@@ -64,15 +79,23 @@ char commandBuffer[64];
 bool wasDark = false;
 uint32_t sensorCheckCounter = 0;
 
+uint16_t last_ultrasonic_distance_cm = 0;
+bool has_ultrasonic_history = false;
+bool buzzer_activated_by_speed = false; 
+bool traffic_lights_red_for_speed = false; 
+bool was_night_mode_before_speed = false;
+TrafficLightState previous_traffic_state = TrafficLightState::GREEN; 
+static constexpr int16_t kSpeedThresholdCmPerS = 11;
+static constexpr uint16_t kMaxDistanceCm = 20; 
+
 int main()
 {
-    // Initialize UART driver first (required for Logger)
     UsartStatus uart_status = UsartDriver::Init(UsartBaudRate::BR9600, UsartParity::NONE, UsartStopBits::ONE);
     if (!uart_status.IsSuccess())
     {
         while (1)
         {
-            // Block on UART initialization failure
+
         }
     }
 
@@ -86,34 +109,35 @@ int main()
     pedestrianLights.Init();
     buzzers.Init();
     pedestrianButton.Init();
+    ultrasonicSensor.Init();
 
-    // Inject logger into ADC, LED, and TrafficLight static methods
     Adc::Init(logger);
     Led::SetLogger(logger);
     TrafficLight::SetLogger(logger);
     LightSensor::Init();
-
-    logger->LogInfo("System initialized. Traffic lights synchronized. Two buttons configured (INT0=right, INT1=left).");
-    trafficLights.ReportState();
 
     TimerConfiguration timerConfig(TimerMode::CTC, Prescaler::DIV_64);
     if (!timerDriver.InitTimer1(timerConfig).IsSuccess())
     {
         while (1)
         {
-            // Block on timer initialization failure
+
         }
+    }
+
+    uint8_t ultrasonicTimerId = timerDriver.CreateTimerSoftware();
+    if (ultrasonicTimerId < 8)
+    {
+        timerDriver.RegisterPeriodicCallback(ultrasonicTimerId, UltrasonicMeasurementRequest, kUltrasonicMeasurePeriodMs);
     }
 
     wasDark = LightSensor::IsDark();
     if (wasDark)
     {
-        logger->LogInfo("[LIGHT_SENSOR] Status: NIGHT");
         pedestrianButton.HandleNightMode();
     }
     else
     {
-        logger->LogInfo("[LIGHT_SENSOR] Status: DAY");
         pedestrianButton.HandleDayMode();
     }
 
@@ -149,6 +173,82 @@ int main()
         if (hardwareUart.ReceiveLine(commandBuffer, sizeof(commandBuffer)))
         {
             commandManager.ExecuteCommand(commandBuffer);
+        }
+
+        if (g_ultrasonic_measure_request)
+        {
+            g_ultrasonic_measure_request = false;
+            uint16_t distance_cm = 0;
+            if (ultrasonicSensor.MeasureDistanceCm(distance_cm))
+            {
+                if (has_ultrasonic_history)
+                {
+                    int16_t delta_distance = static_cast<int16_t>(last_ultrasonic_distance_cm) - static_cast<int16_t>(distance_cm);
+                    int16_t speed_cm_per_s = delta_distance;
+                    bool object_approaching = (delta_distance > 0);
+                    
+                    if (!pedestrianButton.IsSequenceActive())
+                    {
+                        bool should_log = object_approaching && distance_cm <= kMaxDistanceCm;
+                        if (should_log)
+                        {
+                            char buffer[80];
+                            snprintf(buffer, sizeof(buffer), "[ALERT] Masina apropiindu-se! Viteza: %d cm/s, Distanta: %u cm\r\n",
+                                    speed_cm_per_s, distance_cm);
+                            UsartDriver::send(buffer);
+                        }
+
+                        bool speed_exceeds_threshold = speed_cm_per_s > kSpeedThresholdCmPerS;
+                        if (speed_exceeds_threshold)
+                        {
+                            if (!buzzer_activated_by_speed)
+                            {
+                                previous_traffic_state = trafficLights.GetState();
+                                
+                                was_night_mode_before_speed = pedestrianButton.IsNightMode();
+                                if (was_night_mode_before_speed)
+                                {
+                                    pedestrianButton.PauseNightToggle();
+                                }
+                                
+                                trafficLights.SetState(TrafficLightState::RED);
+                                traffic_lights_red_for_speed = true;
+                            }
+                            buzzers.SetState(true);
+                            buzzer_activated_by_speed = true;
+                        }
+                        else
+                        {
+                            if (buzzer_activated_by_speed)
+                            {
+                                buzzers.SetState(false);
+                                buzzer_activated_by_speed = false;
+                                if (traffic_lights_red_for_speed)
+                                {
+                                    trafficLights.SetState(previous_traffic_state);
+                                    traffic_lights_red_for_speed = false;
+                                    
+                                    if (was_night_mode_before_speed)
+                                    {
+                                        pedestrianButton.ResumeNightToggle();
+                                        was_night_mode_before_speed = false;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        buzzer_activated_by_speed = false;
+                    }
+                }
+                else
+                {
+                    has_ultrasonic_history = true;
+                }
+                
+                last_ultrasonic_distance_cm = distance_cm;
+            }
         }
     }
 

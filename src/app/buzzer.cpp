@@ -17,7 +17,12 @@ void Buzzer::SetState(bool active)
 {
     active_state_ = active;
     
-    if (!active)
+    if (active)
+    {
+        gpio_.SetPinValue(buzzer_pin_, PinValue::HIGH);
+        current_buzzer_state_ = true;
+    }
+    else
     {
         gpio_.SetPinValue(buzzer_pin_, PinValue::LOW);
         current_buzzer_state_ = false;

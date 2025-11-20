@@ -63,6 +63,37 @@ void PedestrianButton::SetButtonsEnabled(bool enabled)
     }
 }
 
+bool PedestrianButton::IsSequenceActive() const
+{
+    return sequence_state_ != PedestrianSequenceState::IDLE;
+}
+
+bool PedestrianButton::IsNightMode() const
+{
+    return (night_toggle_timer_id_ < 8) && (night_toggle_timer_id_ != kInvalidTimerId);
+}
+
+void PedestrianButton::PauseNightToggle()
+{
+    if (night_toggle_timer_id_ < 8)
+    {
+        timer_driver_->UnregisterPeriodicCallback(night_toggle_timer_id_);
+    }
+}
+
+void PedestrianButton::ResumeNightToggle()
+{
+    if (night_toggle_timer_id_ < 8)
+    {
+        // Reînregistrează callback-ul pentru toggle noapte
+        timer_driver_->RegisterPeriodicCallback(
+            night_toggle_timer_id_, 
+            PedestrianButtonEventRouter::HandleNightToggle, 
+            kNightTogglePeriodMs
+        );
+    }
+}
+
 void PedestrianButton::OnRightButtonInterrupt()
 {
     right_pressed_flag_ = true;

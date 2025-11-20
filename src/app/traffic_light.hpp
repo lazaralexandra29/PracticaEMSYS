@@ -61,6 +61,10 @@ private:
     
     static TrafficLight* instance_;
     static ILogger* static_logger_;
+
+    bool red_shared_;
+    bool yellow_shared_;
+    bool green_shared_;
 };
 
 #endif
