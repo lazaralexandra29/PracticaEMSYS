@@ -1,4 +1,4 @@
-#include "app/uart_interface.hpp"
+#include "app/hardware_uart_interface.hpp"
 
 bool HardwareUartInterface::Init(UsartBaudRate baud_rate, UsartParity parity, UsartStopBits stop_bits)
 {
@@ -23,5 +23,4 @@ bool HardwareUartInterface::ReceiveLine(char* buffer, uint8_t length)
 
     return UsartDriver::receiveLineNonBlocking(buffer, length);
 }
-
 

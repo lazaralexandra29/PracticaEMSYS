@@ -6,7 +6,7 @@
 #include "app/pedestrian_light.hpp"
 #include "app/buzzer.hpp"
 #include "app/pedestrian_button_router.hpp"
-#include "app/uart_interface.hpp"
+#include "app/hardware_uart_interface.hpp"
 #include "drivers/timer_driver.hpp"
 #include <stdint.h>
 

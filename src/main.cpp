@@ -11,7 +11,7 @@
 #include "app/light_sensor.hpp"
 #include "app/pedestrian_button.hpp"
 #include "app/pedestrian_button_router.hpp"
-#include "app/uart_interface.hpp"
+#include "app/hardware_uart_interface.hpp"
 #include "app/logger.hpp"
 #include "app/ultrasonic_sensor.hpp"
 #include <stdio.h>

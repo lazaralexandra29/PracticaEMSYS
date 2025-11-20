@@ -1,5 +1,5 @@
 #include "app/pedestrian_button.hpp"
-#include "app/uart_interface.hpp"
+#include "app/hardware_uart_interface.hpp"
 #include <avr/interrupt.h>
 
 PedestrianButton::PedestrianButton(

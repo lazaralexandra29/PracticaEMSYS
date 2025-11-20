@@ -7,7 +7,7 @@
 #include "app/buzzer.hpp"
 #include "app/pedestrian_button.hpp"
 #include "app/command.hpp"
-#include "app/uart_interface.hpp"
+#include "app/hardware_uart_interface.hpp"
 #include "app/light_sensor.hpp"
 #include "app/adc.hpp"
 #include "app/logger.hpp"

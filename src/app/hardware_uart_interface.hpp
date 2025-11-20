@@ -1,17 +1,9 @@
-#ifndef APP_UART_INTERFACE_HPP
-#define APP_UART_INTERFACE_HPP
+#ifndef APP_HARDWARE_UART_INTERFACE_HPP
+#define APP_HARDWARE_UART_INTERFACE_HPP
 
+#include "interfaces/iuart_interface.hpp"
 #include "drivers/usart_driver.hpp"
 #include <stdint.h>
-
-class IUartInterface
-{
-public:
-    virtual ~IUartInterface() = default;
-
-    virtual void Send(const char* message) = 0;
-    virtual bool ReceiveLine(char* buffer, uint8_t length) = 0;
-};
 
 class HardwareUartInterface : public IUartInterface
 {
@@ -25,3 +17,4 @@ public:
 };
 
 #endif
+

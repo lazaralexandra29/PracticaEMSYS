@@ -1,5 +1,5 @@
 #include "app/traffic_system_manager.hpp"
-#include "app/uart_interface.hpp"
+#include "app/hardware_uart_interface.hpp"
 #include "drivers/usart_driver.hpp"
 #include "config/pin_config.hpp"
 #include <util/delay.h>
