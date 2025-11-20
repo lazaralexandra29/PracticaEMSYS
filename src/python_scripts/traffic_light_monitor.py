@@ -126,3 +126,4 @@ if __name__ == "__main__":
     finally:
         ser.close()
         print(f"{Colors.GREEN}[INFO]{Colors.RESET} Serial connection closed.")
+

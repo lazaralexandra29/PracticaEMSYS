@@ -24,3 +24,4 @@ bool HardwareUartInterface::ReceiveLine(char* buffer, uint8_t length)
     return UsartDriver::receiveLineNonBlocking(buffer, length);
 }
 
+
