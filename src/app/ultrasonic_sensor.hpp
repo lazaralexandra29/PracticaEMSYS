@@ -17,6 +17,15 @@ public:
 
 private:
     static constexpr uint32_t kEchoTimeoutUs = 30000;
+    static constexpr uint32_t kTriggerPulseUs = 10;
+    static constexpr uint32_t kTriggerDelayUs = 2;
+    
+    void InitMicrosecondTimer();
+    void StartMicrosecondTimer();
+    void StopMicrosecondTimer();
+    uint32_t GetMicrosecondCounter();
+    void WaitMicroseconds(uint32_t us);
+    
     GpioDriver gpio_;
     PinDescription trig_pin_;
     PinDescription echo_pin_;

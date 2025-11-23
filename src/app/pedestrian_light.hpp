@@ -2,7 +2,7 @@
 #define PEDESTRIAN_LIGHT_HPP
 
 #include "app/led.hpp"
-#include "app/logger.hpp"
+#include "interfaces/ilogger.hpp"
 #include <stdint.h>
 
 enum class PedestrianLightState : uint8_t
@@ -20,7 +20,7 @@ public:
         volatile uint8_t* leftGreenPort, uint8_t leftGreenPin,
         volatile uint8_t* rightRedPort, uint8_t rightRedPin,
         volatile uint8_t* rightGreenPort, uint8_t rightGreenPin,
-        ILogger* logger = nullptr
+        ILogger& logger
     );
 
     void Init();

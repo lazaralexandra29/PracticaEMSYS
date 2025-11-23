@@ -1,10 +1,6 @@
 #include "app/traffic_light.hpp"
-#include "app/logger.hpp"
 #include <stdio.h>
 #include <string.h>
-
-TrafficLight* TrafficLight::instance_ = nullptr;
-ILogger* TrafficLight::static_logger_ = nullptr;
 
 TrafficLight::TrafficLight(
     volatile uint8_t* leftRedPort, uint8_t leftRedPin,
@@ -13,23 +9,19 @@ TrafficLight::TrafficLight(
     volatile uint8_t* rightRedPort, uint8_t rightRedPin,
     volatile uint8_t* rightYellowPort, uint8_t rightYellowPin,
     volatile uint8_t* rightGreenPort, uint8_t rightGreenPin,
-    ILogger* logger
-) : left_red_(leftRedPort, leftRedPin, logger),
-    left_yellow_(leftYellowPort, leftYellowPin, logger),
-    left_green_(leftGreenPort, leftGreenPin, logger),
-    right_red_(rightRedPort, rightRedPin, logger),
-    right_yellow_(rightYellowPort, rightYellowPin, logger),
-    right_green_(rightGreenPort, rightGreenPin, logger),
+    ILogger& logger
+) : left_red_(leftRedPort, leftRedPin, &logger),
+    left_yellow_(leftYellowPort, leftYellowPin, &logger),
+    left_green_(leftGreenPort, leftGreenPin, &logger),
+    right_red_(rightRedPort, rightRedPin, &logger),
+    right_yellow_(rightYellowPort, rightYellowPin, &logger),
+    right_green_(rightGreenPort, rightGreenPin, &logger),
     current_state_(TrafficLightState::RED),
     logger_(logger),
     red_shared_((leftRedPort == rightRedPort) && (leftRedPin == rightRedPin)),
     yellow_shared_((leftYellowPort == rightYellowPort) && (leftYellowPin == rightYellowPin)),
     green_shared_((leftGreenPort == rightGreenPort) && (leftGreenPin == rightGreenPin))
 {
-    if (static_logger_ == nullptr)
-    {
-        static_logger_ = logger;
-    }
 }
 
 void TrafficLight::Init()
@@ -43,8 +35,6 @@ void TrafficLight::Init()
     right_green_.Init();
     
     SetState(TrafficLightState::RED);
-    
-    RegisterInstance(this);
 }
 
 void TrafficLight::SetState(TrafficLightState state)
@@ -115,84 +105,5 @@ void TrafficLight::ReportState()
         "[TRAFFIC] State: %s | Left: %s | Right: %s",
         GetStateString(), GetStateString(), GetStateString());
     
-    ILogger* logger = GetLogger();
-    if (logger != nullptr)
-    {
-        logger->LogInfo(buffer);
-    }
-}
-
-void TrafficLight::RegisterInstance(TrafficLight* inst)
-{
-    instance_ = inst;
-}
-
-ILogger* TrafficLight::GetLogger() const
-{
-    if (logger_ == nullptr)
-    {
-        if (static_logger_ == nullptr)
-        {
-            return static_cast<ILogger*>(Logger::GetInstance());
-        }
-        return static_logger_;
-    }
-    return logger_;
-}
-
-ILogger* TrafficLight::GetStaticLogger()
-{
-    if (static_logger_ == nullptr)
-    {
-        return static_cast<ILogger*>(Logger::GetInstance());
-    }
-    return static_logger_;
-}
-
-void TrafficLight::SetLogger(ILogger* logger)
-{
-    static_logger_ = logger;
-}
-
-void TrafficLight::HandleSetState(const char* state_str)
-{
-    if (instance_ == nullptr)
-    {
-        GetStaticLogger()->LogError("Traffic lights not initialized.");
-        return;
-    }
-    
-    TrafficLightState new_state;
-    
-    if (strcmp(state_str, "RED") == 0 || strcmp(state_str, "red") == 0)
-    {
-        new_state = TrafficLightState::RED;
-    }
-    else if (strcmp(state_str, "YELLOW") == 0 || strcmp(state_str, "yellow") == 0)
-    {
-        new_state = TrafficLightState::YELLOW;
-    }
-    else if (strcmp(state_str, "GREEN") == 0 || strcmp(state_str, "green") == 0)
-    {
-        new_state = TrafficLightState::GREEN;
-    }
-    else
-    {
-        GetStaticLogger()->LogError("Invalid state. Use RED, YELLOW, or GREEN.");
-        return;
-    }
-    
-    instance_->SetState(new_state);
-    instance_->ReportState();
-}
-
-void TrafficLight::HandleGetState()
-{
-    if (instance_ == nullptr)
-    {
-        GetStaticLogger()->LogError("Traffic lights not initialized.");
-        return;
-    }
-    
-    instance_->ReportState();
+    logger_.Log(LogLevel::INFO, buffer);
 }

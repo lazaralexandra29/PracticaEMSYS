@@ -2,7 +2,7 @@
 #define TRAFFIC_LIGHT_HPP
 
 #include "app/led.hpp"
-#include "app/logger.hpp"
+#include "interfaces/ilogger.hpp"
 #include <stdint.h>
 
 enum class TrafficLightState : uint8_t
@@ -22,7 +22,7 @@ public:
         volatile uint8_t* rightRedPort, uint8_t rightRedPin,
         volatile uint8_t* rightYellowPort, uint8_t rightYellowPin,
         volatile uint8_t* rightGreenPort, uint8_t rightGreenPin,
-        ILogger* logger = nullptr
+        ILogger& logger
     );
 
     void Init();
@@ -37,11 +37,10 @@ public:
     
     void ReportState();
     
-    static void RegisterInstance(TrafficLight* instance);
-    static void HandleSetState(const char* state_str);
-    static void HandleGetState();
-    
-    static void SetLogger(ILogger* logger);
+    ILogger& GetLogger() 
+    { 
+        return logger_; 
+    }
 
 private:
     Led left_red_;
@@ -53,14 +52,9 @@ private:
     Led right_green_;
     
     TrafficLightState current_state_;
-    ILogger* logger_;
+    ILogger& logger_;
     
     void UpdateLights();
-    ILogger* GetLogger() const;
-    static ILogger* GetStaticLogger();
-    
-    static TrafficLight* instance_;
-    static ILogger* static_logger_;
 
     bool red_shared_;
     bool yellow_shared_;

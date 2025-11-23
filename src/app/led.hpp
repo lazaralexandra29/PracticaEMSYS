@@ -2,7 +2,7 @@
 #define LED_HPP
 
 #include "drivers/gpio_driver.hpp"
-#include "app/logger.hpp"
+#include "interfaces/ilogger.hpp"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -16,16 +16,10 @@ public:
     bool GetState() const;
     void Toggle();
 
-    static void SetLogger(ILogger* logger);
-
 private:
     GpioDriver gpio_;
     PinDescription led_pin_;
     ILogger* logger_;
-
-    static ILogger* static_logger_;
-    ILogger* GetLogger() const;
-    static ILogger* GetStaticLogger();
 };
 
 #endif

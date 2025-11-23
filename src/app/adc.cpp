@@ -1,6 +1,6 @@
 #include "app/adc.hpp"
-#include "drivers/adc_driver.hpp"
 #include "app/logger.hpp"
+#include "drivers/adc_driver.hpp"
 #include <stdio.h>
 #include <stdint.h>
 
@@ -10,26 +10,14 @@ static constexpr AdcReference kAdcRef = AdcReference::AVCC;
 static constexpr AdcPrescaler kAdcPrescaler = AdcPrescaler::DIV128;
 static constexpr uint8_t kAdcDefaultChannel = 0;
 
-ILogger* Adc::logger_ = nullptr;
+Adc::Adc(ILogger* logger)
+    : logger_(logger != nullptr ? logger : Logger::GetInstance())
+{
+}
 
-void Adc::Init(ILogger* logger)
+void Adc::Init()
 {
     g_adcDriver.Init(kAdcRef, kAdcPrescaler);
-    SetLogger(logger);
-}
-
-void Adc::SetLogger(ILogger* logger)
-{
-    logger_ = logger;
-}
-
-ILogger* Adc::GetLogger()
-{
-    if (logger_ == nullptr)
-    {
-        return static_cast<ILogger*>(Logger::GetInstance());
-    }
-    return logger_;
 }
 
 uint16_t Adc::ReadAdcValue(uint8_t channel)
@@ -41,7 +29,6 @@ uint16_t Adc::ReadAdcValue(uint8_t channel)
         return status.GetValue();
     }
 
-    GetLogger()->LogError("ADC read failed.");
+    logger_->Log(LogLevel::ERROR, "ADC read failed.");
     return 0;
 }
-

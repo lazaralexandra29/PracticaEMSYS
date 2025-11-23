@@ -8,7 +8,7 @@
 class LightSensor
 {
 public:
-    static void Init();
+    static void Init(Adc* adc);
     static bool IsDark(); 
     static uint16_t ReadValue();
     
@@ -16,6 +16,7 @@ private:
     static constexpr uint16_t kDarkThresholdLow = 250;   
     static constexpr uint16_t kDarkThresholdHigh = 420;
     static bool last_dark_state_;
+    static Adc* adc_instance_;
 };
 
 #endif

@@ -7,6 +7,7 @@
 #include "app/buzzer.hpp"
 #include "app/pedestrian_button_router.hpp"
 #include "app/hardware_uart_interface.hpp"
+#include "interfaces/ilogger.hpp"
 #include "drivers/timer_driver.hpp"
 #include <stdint.h>
 
@@ -19,14 +20,6 @@ enum class PedestrianSequenceState : uint8_t
     PEDESTRIAN_BLINK = 5
 };
 
-enum class PedestrianLogType : uint8_t
-{
-    kInfo = 0,
-    kDebug = 1,
-    kWarning = 2,
-    kError = 3
-};
-
 class PedestrianButton : public PedestrianButtonEventHandler
 {
 public:
@@ -36,7 +29,8 @@ public:
                      PedestrianLight* pedestrian_lights,
                      Buzzer* buzzers,
                      TimerDriver* timer_driver,
-                     IUartInterface* uart_interface);
+                     IUartInterface* uart_interface,
+                     ILogger* logger = nullptr);
 
     void Init();
     void Update();
@@ -66,6 +60,7 @@ private:
     Buzzer* buzzers_;
     TimerDriver* timer_driver_;
     IUartInterface* uart_interface_;
+    ILogger* logger_;
 
     PedestrianSequenceState sequence_state_;
     bool buttons_enabled_;
@@ -80,8 +75,6 @@ private:
     void StartSequence();
     void EnterState(PedestrianSequenceState state, uint32_t duration_ms);
     void ProcessSequenceTick();
-    void Log(PedestrianLogType log_type, const char* message) const;
-    const char* GetLogPrefix(PedestrianLogType log_type) const;
 };
 
 #endif

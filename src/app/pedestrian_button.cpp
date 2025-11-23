@@ -1,5 +1,7 @@
 #include "app/pedestrian_button.hpp"
 #include "app/hardware_uart_interface.hpp"
+#include "app/logger.hpp"
+#include "interfaces/ilogger.hpp"
 #include <avr/interrupt.h>
 
 PedestrianButton::PedestrianButton(
@@ -9,7 +11,8 @@ PedestrianButton::PedestrianButton(
     PedestrianLight* pedestrian_lights,
     Buzzer* buzzers,
     TimerDriver* timer_driver,
-    IUartInterface* uart_interface)
+    IUartInterface* uart_interface,
+    ILogger* logger)
     :
     right_button_(right_button),
     left_button_(left_button),
@@ -18,6 +21,7 @@ PedestrianButton::PedestrianButton(
     buzzers_(buzzers),
     timer_driver_(timer_driver),
     uart_interface_(uart_interface),
+    logger_(logger != nullptr ? logger : Logger::GetInstance()),
     sequence_state_(PedestrianSequenceState::IDLE),
     buttons_enabled_(true),
     right_pressed_flag_(false),
@@ -124,7 +128,7 @@ void PedestrianButton::Update()
     if (right_pressed_flag_)
     {
         right_pressed_flag_ = false;
-        Log(PedestrianLogType::kInfo, "Right button pressed.");
+        logger_->Log(LogLevel::INFO, "Right button pressed.");
         if (sequence_state_ == PedestrianSequenceState::IDLE)
         {
             StartSequence();
@@ -134,7 +138,7 @@ void PedestrianButton::Update()
     if (left_pressed_flag_)
     {
         left_pressed_flag_ = false;
-        Log(PedestrianLogType::kInfo, "Left button pressed.");
+        logger_->Log(LogLevel::INFO, "Left button pressed.");
         if (sequence_state_ == PedestrianSequenceState::IDLE)
         {
             StartSequence();
@@ -146,7 +150,7 @@ void PedestrianButton::StartSequence()
 {
     if (traffic_lights_ == nullptr || pedestrian_lights_ == nullptr || buzzers_ == nullptr)
     {
-        Log(PedestrianLogType::kError, "Dependencies missing. Cannot start sequence.");
+        logger_->Log(LogLevel::ERROR, "Dependencies missing. Cannot start sequence.");
         return;
     }
 
@@ -168,26 +172,26 @@ void PedestrianButton::EnterState(PedestrianSequenceState state, uint32_t durati
             traffic_lights_->SetState(TrafficLightState::GREEN);
             pedestrian_lights_->SetState(PedestrianLightState::RED);
             buzzers_->SetState(false);
-            Log(PedestrianLogType::kInfo, "Traffic -> GREEN, Pedestrians -> RED.");
+            logger_->Log(LogLevel::INFO, "Traffic -> GREEN, Pedestrians -> RED.");
             break;
 
         case PedestrianSequenceState::TRANSITION_TO_YELLOW:
             traffic_lights_->SetState(TrafficLightState::YELLOW);
             pedestrian_lights_->SetState(PedestrianLightState::RED);
             buzzers_->SetState(false);
-            Log(PedestrianLogType::kInfo, "Traffic -> YELLOW, Pedestrians -> RED.");
+            logger_->Log(LogLevel::INFO, "Traffic -> YELLOW, Pedestrians -> RED.");
             break;
 
         case PedestrianSequenceState::PEDESTRIAN_CROSSING:
             traffic_lights_->SetState(TrafficLightState::RED);
             pedestrian_lights_->SetState(PedestrianLightState::GREEN);
             buzzers_->SetState(true);
-            Log(PedestrianLogType::kInfo, "Traffic -> RED, Pedestrians -> GREEN.");
+            logger_->Log(LogLevel::INFO, "Traffic -> RED, Pedestrians -> GREEN.");
             break;
 
         case PedestrianSequenceState::PEDESTRIAN_BLINK:
             pedestrian_lights_->SetState(PedestrianLightState::BLINKING);
-            Log(PedestrianLogType::kInfo, "Pedestrians -> GREEN (blinking). Traffic remains RED.");
+            logger_->Log(LogLevel::INFO, "Pedestrians -> GREEN (blinking). Traffic remains RED.");
             break;
 
         default: break;
@@ -239,7 +243,7 @@ void PedestrianButton::ProcessSequenceTick()
                 traffic_lights_->SetState(TrafficLightState::GREEN);
                 pedestrian_lights_->SetState(PedestrianLightState::RED);
                 buzzers_->SetState(false); 
-                Log(PedestrianLogType::kInfo, "Sequence finished. Traffic -> GREEN, Pedestrians -> RED.");
+                logger_->Log(LogLevel::INFO, "Sequence finished. Traffic -> GREEN, Pedestrians -> RED.");
             }
             break;
 
@@ -266,7 +270,7 @@ void PedestrianButton::HandleNightMode()
     {
         traffic_lights_->SetState(TrafficLightState::YELLOW);
     }
-    Log(PedestrianLogType::kInfo, "Night mode: Traffic -> YELLOW (blinking), Pedestrians OFF.");
+    logger_->Log(LogLevel::INFO, "Night mode: Traffic -> YELLOW (blinking), Pedestrians OFF.");
 
     if (night_toggle_timer_id_ < 8)
     {
@@ -314,7 +318,7 @@ void PedestrianButton::HandleDayMode()
     }
 
     SetButtonsEnabled(true);
-    Log(PedestrianLogType::kInfo, "Day mode: Traffic -> GREEN, Pedestrians -> RED.");
+    logger_->Log(LogLevel::INFO, "Day mode: Traffic -> GREEN, Pedestrians -> RED.");
 
     if (uart_interface_ != nullptr)
     {
@@ -332,26 +336,3 @@ ISR(INT1_vect)
     PedestrianButtonEventRouter::HandleLeftButtonInterrupt();
 }
 
-void PedestrianButton::Log(PedestrianLogType log_type, const char* message) const
-{
-    if (uart_interface_ == nullptr)
-    {
-        return;
-    }
-
-    uart_interface_->Send(GetLogPrefix(log_type));
-    uart_interface_->Send(message);
-    uart_interface_->Send("\r\n");
-}
-
-const char* PedestrianButton::GetLogPrefix(PedestrianLogType log_type) const
-{
-    switch (log_type)
-    {
-        case PedestrianLogType::kInfo: return "[INFO] ";
-        case PedestrianLogType::kDebug: return "[DEBUG] ";
-        case PedestrianLogType::kWarning: return "[WARN] ";
-        case PedestrianLogType::kError: return "[ERROR] ";
-        default: return "[INFO] ";
-    }
-}

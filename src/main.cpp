@@ -31,7 +31,7 @@ void UltrasonicMeasurementRequest()
 
 TimerDriver timerDriver;
 
-Logger* logger = Logger::GetInstance();
+ILogger* logger = Logger::GetInstance();
 
 TrafficLight trafficLights(
     TRAFFIC_LIGHT_LEFT_RED_PORT, TRAFFIC_LIGHT_LEFT_RED_PIN,
@@ -40,7 +40,7 @@ TrafficLight trafficLights(
     TRAFFIC_LIGHT_RIGHT_RED_PORT, TRAFFIC_LIGHT_RIGHT_RED_PIN,
     TRAFFIC_LIGHT_RIGHT_YELLOW_PORT, TRAFFIC_LIGHT_RIGHT_YELLOW_PIN,
     TRAFFIC_LIGHT_RIGHT_GREEN_PORT, TRAFFIC_LIGHT_RIGHT_GREEN_PIN,
-    logger
+    *logger
 );
 
 
@@ -52,7 +52,7 @@ PedestrianLight pedestrianLights(
     PEDESTRIAN_LEFT_GREEN_PORT, PEDESTRIAN_LEFT_GREEN_PIN,
     PEDESTRIAN_RIGHT_RED_PORT, PEDESTRIAN_RIGHT_RED_PIN,
     PEDESTRIAN_RIGHT_GREEN_PORT, PEDESTRIAN_RIGHT_GREEN_PIN,
-    logger
+    *logger
 );
 
 Buzzer buzzers(BUZZER_PORT, BUZZER_PIN);
@@ -63,6 +63,8 @@ UltrasonicSensor ultrasonicSensor(
     ULTRASONIC_ECHO_PORT,
     ULTRASONIC_ECHO_PIN);
 
+Adc adc(logger);
+
 PedestrianButton pedestrianButton(
     &buttonRight,
     &buttonLeft,
@@ -70,7 +72,8 @@ PedestrianButton pedestrianButton(
     &pedestrianLights,
     &buzzers,
     &timerDriver,
-    &hardwareUart
+    &hardwareUart,
+    logger
 );
 
 Command commandManager(&pedestrianButton);
@@ -111,10 +114,8 @@ int main()
     pedestrianButton.Init();
     ultrasonicSensor.Init();
 
-    Adc::Init(logger);
-    Led::SetLogger(logger);
-    TrafficLight::SetLogger(logger);
-    LightSensor::Init();
+    adc.Init();
+    LightSensor::Init(&adc);
 
     TimerConfiguration timerConfig(TimerMode::CTC, Prescaler::DIV_64);
     if (!timerDriver.InitTimer1(timerConfig).IsSuccess())
@@ -159,12 +160,12 @@ int main()
                 wasDark = isDark;
                 if (isDark)
                 {
-                    logger->LogInfo("[LIGHT_SENSOR] Status: NIGHT -> applying night mode");
+                    logger->Log(LogLevel::INFO, "[LIGHT_SENSOR] Status: NIGHT -> applying night mode");
                     pedestrianButton.HandleNightMode();
                 }
                 else
                 {
-                    logger->LogInfo("[LIGHT_SENSOR] Status: DAY -> restoring normal mode");
+                    logger->Log(LogLevel::INFO, "[LIGHT_SENSOR] Status: DAY -> restoring normal mode");
                     pedestrianButton.HandleDayMode();
                 }
             }

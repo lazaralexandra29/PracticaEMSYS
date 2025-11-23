@@ -10,7 +10,7 @@
 #include "app/hardware_uart_interface.hpp"
 #include "app/light_sensor.hpp"
 #include "app/adc.hpp"
-#include "app/logger.hpp"
+#include "interfaces/ilogger.hpp"
 #include "app/ultrasonic_sensor.hpp"
 #include "drivers/timer_driver.hpp"
 #include "drivers/usart_driver.hpp"
@@ -29,6 +29,7 @@ public:
         PedestrianButton* pedestrian_button,
         Command* command_manager,
         IUartInterface* uart_interface,
+        ILogger* logger = nullptr,
         UltrasonicSensor* ultrasonic_sensor = nullptr
     );
 
@@ -68,7 +69,6 @@ public:
         return command_manager_; 
     }
     
-    void Log(LogLevel level, const char* message) const;
 
 private:
     static TrafficSystemManager* instance_;
@@ -82,6 +82,7 @@ private:
     PedestrianButton* pedestrian_button_;
     Command* command_manager_;
     IUartInterface* uart_interface_;
+    ILogger* logger_;
     UltrasonicSensor* ultrasonic_sensor_;
 
     bool initialized_;
@@ -92,7 +93,6 @@ private:
     void InitializeComponents();
     void CheckLightSensor();
     void ProcessCommands();
-    const char* GetLogLevelPrefix(LogLevel level) const;
     void ReportInitialUltrasonicDistance();
 };
 
